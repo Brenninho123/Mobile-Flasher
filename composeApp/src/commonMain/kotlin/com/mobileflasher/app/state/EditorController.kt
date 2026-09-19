@@ -1,11 +1,19 @@
 package com.mobileflasher.app.state
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntSize
 import com.mobileflasher.app.model.Frame
+import com.mobileflasher.app.model.ImageShape
 import com.mobileflasher.app.model.Layer
+import com.mobileflasher.app.model.Project
 import com.mobileflasher.app.model.Tool
 import com.mobileflasher.app.model.VectorShape
+import com.mobileflasher.app.platform.decodePngToImageBitmap
+import com.mobileflasher.app.svg.importSvg
+import com.mobileflasher.app.xml.parseProjectXml
+import com.mobileflasher.app.xml.writeProjectXml
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +39,10 @@ class EditorController {
 
     fun setFillColor(color: Color?) {
         _state.update { it.copy(fillColor = color) }
+    }
+
+    fun setStrokeWidth(width: Float) {
+        _state.update { it.copy(strokeWidth = width) }
     }
 
     fun selectShape(shapeId: String?) {
@@ -108,6 +120,77 @@ class EditorController {
 
     fun toggleLayerVisibility(index: Int) {
         _state.update { current -> current.withLayer(index) { layer -> layer.copy(isVisible = !layer.isVisible) } }
+    }
+
+    fun setCanvasSize(size: IntSize) {
+        _state.update { it.copy(canvasSize = size) }
+    }
+
+    fun setStatusMessage(message: String?) {
+        _state.update { it.copy(statusMessage = message) }
+    }
+
+    fun importImage(pngBytes: ByteArray) {
+        val canvasSize = _state.value.canvasSize
+        val defaultSize = 160f
+        val bitmap = try {
+            decodePngToImageBitmap(pngBytes)
+        } catch (e: Exception) {
+            setStatusMessage("Could not read that image")
+            return
+        }
+        val aspectRatio = bitmap.height.toFloat() / bitmap.width.toFloat().coerceAtLeast(1f)
+        val width = defaultSize
+        val height = defaultSize * aspectRatio
+        val topLeft = if (canvasSize.width > 0 && canvasSize.height > 0) {
+            Offset((canvasSize.width - width) / 2f, (canvasSize.height - height) / 2f)
+        } else {
+            Offset.Zero
+        }
+        addShape(
+            ImageShape(
+                id = nextShapeId(),
+                topLeft = topLeft,
+                size = Size(width, height),
+                image = bitmap,
+                sourcePng = pngBytes
+            )
+        )
+    }
+
+    fun importSvgFile(svgText: String) {
+        val shapes = try {
+            importSvg(svgText, nextId = ::nextShapeId)
+        } catch (e: Exception) {
+            setStatusMessage("Could not read that SVG file")
+            return
+        }
+        if (shapes.isEmpty()) {
+            setStatusMessage("No shapes found in that SVG file")
+            return
+        }
+        _state.update { current -> current.withCurrentFrame { frame -> frame.copy(shapes = frame.shapes + shapes) } }
+    }
+
+    fun serializeProjectXml(): String = writeProjectXml(_state.value.project)
+
+    fun loadProjectXml(xml: String) {
+        val project = try {
+            parseProjectXml(xml)
+        } catch (e: Exception) {
+            setStatusMessage("Could not open that project file")
+            return
+        }
+        loadProject(project)
+    }
+
+    fun loadProject(project: Project) {
+        _state.update {
+            EditorUiState(
+                project = project,
+                canvasSize = it.canvasSize
+            )
+        }
     }
 
     private fun Layer.appendFrame(isKeyframe: Boolean): Layer {

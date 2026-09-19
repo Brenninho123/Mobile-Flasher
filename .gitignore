@@ -43,7 +43,9 @@ captures/
 .vscode/
 
 # Xcode / iOS
+iosApp/iosApp.xcodeproj/
 iosApp/**/xcuserdata/
 iosApp/**/*.xcworkspace/xcuserdata/
 iosApp/**/DerivedData/
+iosApp/build/
 .DS_Store

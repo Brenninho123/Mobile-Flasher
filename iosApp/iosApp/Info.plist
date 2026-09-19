@@ -5,17 +5,23 @@
     <key>CFBundleDisplayName</key>
     <string>Mobile Flasher</string>
     <key>CFBundleName</key>
-    <string>Mobile Flasher</string>
+    <string>$(PRODUCT_NAME)</string>
     <key>CFBundleIdentifier</key>
-    <string>com.mobileflasher.app</string>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Mobile Flasher needs access to your photo library to import images onto the canvas.</string>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>

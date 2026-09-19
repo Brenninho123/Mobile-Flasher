@@ -16,9 +16,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,16 +56,28 @@ fun TimelinePanel(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 4.dp)
         ) {
-            TextButton(onClick = onTogglePlay) { Text(if (uiState.isPlaying) "Pause" else "Play") }
-            TextButton(onClick = onAddFrame) { Text("+ Frame") }
-            TextButton(onClick = onAddKeyframe) { Text("+ Keyframe") }
-            TextButton(onClick = onAddLayer) { Text("+ Layer") }
+            IconButton(onClick = onTogglePlay) {
+                Icon(
+                    if (uiState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (uiState.isPlaying) "Pause" else "Play"
+                )
+            }
+            IconButton(onClick = onAddFrame) {
+                Icon(Icons.Filled.Add, contentDescription = "Add frame")
+            }
+            IconButton(onClick = onAddKeyframe) {
+                Icon(Icons.Filled.Star, contentDescription = "Add keyframe")
+            }
+            IconButton(onClick = onAddLayer) {
+                Icon(Icons.Filled.Layers, contentDescription = "Add layer")
+            }
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = "Frame ${uiState.currentFrameIndex + 1} / ${uiState.project.frameCount}",
-                modifier = Modifier.padding(end = 8.dp)
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(end = 12.dp)
             )
         }
         LazyColumn {
@@ -87,21 +108,22 @@ private fun LayerRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .height(32.dp)
+            .height(36.dp)
             .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
     ) {
         Row(
             modifier = Modifier
-                .width(120.dp)
+                .width(128.dp)
                 .clickable(onClick = onLayerClick)
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = layer.name, maxLines = 1)
-            Text(
-                text = if (layer.isVisible) "o" else "x",
-                modifier = Modifier.clickable(onClick = onVisibilityToggle)
+            Text(text = layer.name, maxLines = 1, style = MaterialTheme.typography.bodySmall)
+            Icon(
+                imageVector = if (layer.isVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                contentDescription = if (layer.isVisible) "Hide layer" else "Show layer",
+                modifier = Modifier.size(18.dp).clickable(onClick = onVisibilityToggle)
             )
         }
         LazyRow {
@@ -109,7 +131,7 @@ private fun LayerRow(
                 val isCurrent = index == currentFrameIndex
                 Row(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(26.dp)
                         .padding(1.dp)
                         .background(
                             if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else Color.Transparent

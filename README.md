@@ -38,10 +38,25 @@ Requires the Android SDK (`local.properties` with `sdk.dir` must point to it).
 
 ### iOS
 
-Building for iOS requires Xcode on macOS. Generate the `iosApp.xcodeproj` with Xcode
-(or the JetBrains KMP wizard) using the existing `iosApp/iosApp` sources
-(`iOSApp.swift`, `ContentView.swift`, `Info.plist`) as the app target, and link it
-against the `ComposeApp` framework produced by `:composeApp`.
+Building for iOS requires Xcode on macOS. The `.xcodeproj` is not committed — it is
+generated from [`iosApp/project.yml`](iosApp/project.yml) with
+[XcodeGen](https://github.com/yonaskolb/XcodeGen):
+
+```bash
+brew install xcodegen
+cd iosApp
+xcodegen generate
+open iosApp.xcodeproj
+```
+
+The project's build phase runs `:composeApp:embedAndSignAppleFrameworkForXcode`
+automatically, so opening and running from Xcode builds the shared Kotlin code too.
+
+CI (see [`.github/workflows/build.yml`](.github/workflows/build.yml)) builds an
+**unsigned** `.ipa` on every push, since there is no Apple Developer account wired up
+yet. It cannot be installed on a physical device as-is — it needs to be re-signed
+(Xcode signing, `fastlane resign`, or a sideloading tool) once you have a
+provisioning profile.
 
 ## Architecture notes
 

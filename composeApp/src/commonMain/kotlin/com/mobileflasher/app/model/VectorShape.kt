@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import kotlin.math.max
 import kotlin.math.min
 
@@ -85,4 +86,32 @@ data class FreehandShape(
     }
 
     override fun translated(delta: Offset): VectorShape = copy(points = points.map { it + delta })
+}
+
+data class ImageShape(
+    override val id: String,
+    val topLeft: Offset,
+    val size: Size,
+    val image: ImageBitmap,
+    val sourcePng: ByteArray
+) : VectorShape() {
+    override val strokeColor: Color = Color.Transparent
+    override val strokeWidth: Float = 0f
+    override val fillColor: Color? = null
+
+    override fun bounds(): Rect = Rect(topLeft, size)
+    override fun translated(delta: Offset): VectorShape = copy(topLeft = topLeft + delta)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ImageShape) return false
+        return id == other.id && topLeft == other.topLeft && size == other.size
+    }
+
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + topLeft.hashCode()
+        result = 31 * result + size.hashCode()
+        return result
+    }
 }

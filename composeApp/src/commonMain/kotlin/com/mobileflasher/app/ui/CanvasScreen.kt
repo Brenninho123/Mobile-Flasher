@@ -13,17 +13,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import com.mobileflasher.app.model.EllipseShape
 import com.mobileflasher.app.model.FreehandShape
 import com.mobileflasher.app.model.LineShape
 import com.mobileflasher.app.model.RectangleShape
 import com.mobileflasher.app.model.Tool
 import com.mobileflasher.app.model.VectorShape
+import com.mobileflasher.app.render.drawShape
+import com.mobileflasher.app.render.pointsToPath
 import com.mobileflasher.app.state.EditorUiState
 import kotlin.math.abs
 import kotlin.math.min
@@ -35,6 +37,7 @@ fun CanvasScreen(
     onShapeCreated: (VectorShape) -> Unit,
     onShapeSelected: (String?) -> Unit,
     onShapeMoved: (String, Offset) -> Unit,
+    onCanvasSizeChanged: (IntSize) -> Unit,
     nextShapeId: () -> String
 ) {
     var dragStart by remember { mutableStateOf<Offset?>(null) }
@@ -48,6 +51,7 @@ fun CanvasScreen(
     Box(
         modifier = modifier
             .background(Color.White)
+            .onSizeChanged(onCanvasSizeChanged)
             .pointerInput(uiState.selectedTool, uiState.currentLayerIndex, uiState.currentFrameIndex) {
                 detectDragGestures(
                     onDragStart = { offset ->
@@ -151,35 +155,3 @@ private fun DrawScope.drawPreview(
     }
 }
 
-private fun DrawScope.drawShape(shape: VectorShape, isSelected: Boolean) {
-    when (shape) {
-        is RectangleShape -> {
-            shape.fillColor?.let { drawRect(color = it, topLeft = shape.topLeft, size = shape.size, style = Fill) }
-            drawRect(color = shape.strokeColor, topLeft = shape.topLeft, size = shape.size, style = Stroke(width = shape.strokeWidth))
-        }
-        is EllipseShape -> {
-            shape.fillColor?.let { drawOval(color = it, topLeft = shape.topLeft, size = shape.size, style = Fill) }
-            drawOval(color = shape.strokeColor, topLeft = shape.topLeft, size = shape.size, style = Stroke(width = shape.strokeWidth))
-        }
-        is LineShape -> drawLine(color = shape.strokeColor, start = shape.start, end = shape.end, strokeWidth = shape.strokeWidth)
-        is FreehandShape -> if (shape.points.size > 1) drawPath(pointsToPath(shape.points), shape.strokeColor, style = Stroke(width = shape.strokeWidth))
-    }
-    if (isSelected) {
-        val bounds = shape.bounds()
-        drawRect(
-            color = Color(0xFFFFC107),
-            topLeft = bounds.topLeft,
-            size = Size(bounds.width, bounds.height),
-            style = Stroke(width = 1.5f)
-        )
-    }
-}
-
-private fun pointsToPath(points: List<Offset>): Path {
-    val path = Path()
-    path.moveTo(points.first().x, points.first().y)
-    for (point in points.drop(1)) {
-        path.lineTo(point.x, point.y)
-    }
-    return path
-}

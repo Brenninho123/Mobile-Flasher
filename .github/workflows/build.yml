@@ -62,5 +62,39 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Build iOS simulator framework
+      - name: Build iOS simulator framework (smoke test)
         run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: iosApp
+        run: xcodegen generate
+
+      - name: Build unsigned .app for iOS device
+        run: |
+          xcodebuild \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build
+
+      - name: Package unsigned .ipa
+        run: |
+          app_path="build/Build/Products/Release-iphoneos/MobileFlasher.app"
+          mkdir -p ipa/Payload
+          cp -R "$app_path" ipa/Payload/
+          (cd ipa && zip -qr ../MobileFlasher-unsigned.ipa Payload)
+
+      - name: Upload unsigned .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-ipa
+          path: MobileFlasher-unsigned.ipa
