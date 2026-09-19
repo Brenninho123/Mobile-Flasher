@@ -57,8 +57,8 @@ fun App() {
 
         when (screen) {
             Screen.HOME -> HomeScreen(
-                onNewProject = {
-                    controller.loadProject(Project(name = "Untitled"))
+                onNewProject = { name, frameRate ->
+                    controller.loadProject(Project(name = name, frameRate = frameRate))
                     screen = Screen.EDITOR
                 },
                 onOpenProject = pickProject
@@ -70,7 +70,10 @@ fun App() {
                 pickImage = pickImage,
                 pickSvg = pickSvg,
                 pickProject = pickProject,
-                onHome = { screen = Screen.HOME },
+                onHome = {
+                    if (uiState.isPlaying) controller.togglePlay()
+                    screen = Screen.HOME
+                },
                 snackbarHostState = snackbarHostState
             )
         }

@@ -16,6 +16,18 @@ sealed class VectorShape {
 
     abstract fun bounds(): Rect
     abstract fun translated(delta: Offset): VectorShape
+    abstract fun scaledTo(target: Rect): VectorShape
+    abstract fun restyled(strokeColor: Color, strokeWidth: Float, fillColor: Color?): VectorShape
+    abstract fun withId(id: String): VectorShape
+}
+
+private fun mapPoint(point: Offset, from: Rect, to: Rect): Offset {
+    val fromWidth = from.width.coerceAtLeast(1f)
+    val fromHeight = from.height.coerceAtLeast(1f)
+    return Offset(
+        to.left + (point.x - from.left) / fromWidth * to.width,
+        to.top + (point.y - from.top) / fromHeight * to.height
+    )
 }
 
 data class RectangleShape(
@@ -28,6 +40,10 @@ data class RectangleShape(
 ) : VectorShape() {
     override fun bounds(): Rect = Rect(topLeft, size)
     override fun translated(delta: Offset): VectorShape = copy(topLeft = topLeft + delta)
+    override fun scaledTo(target: Rect): VectorShape = copy(topLeft = target.topLeft, size = target.size)
+    override fun restyled(strokeColor: Color, strokeWidth: Float, fillColor: Color?): VectorShape =
+        copy(strokeColor = strokeColor, strokeWidth = strokeWidth, fillColor = fillColor)
+    override fun withId(id: String): VectorShape = copy(id = id)
 }
 
 data class EllipseShape(
@@ -40,6 +56,10 @@ data class EllipseShape(
 ) : VectorShape() {
     override fun bounds(): Rect = Rect(topLeft, size)
     override fun translated(delta: Offset): VectorShape = copy(topLeft = topLeft + delta)
+    override fun scaledTo(target: Rect): VectorShape = copy(topLeft = target.topLeft, size = target.size)
+    override fun restyled(strokeColor: Color, strokeWidth: Float, fillColor: Color?): VectorShape =
+        copy(strokeColor = strokeColor, strokeWidth = strokeWidth, fillColor = fillColor)
+    override fun withId(id: String): VectorShape = copy(id = id)
 }
 
 data class LineShape(
@@ -60,6 +80,16 @@ data class LineShape(
     }
 
     override fun translated(delta: Offset): VectorShape = copy(start = start + delta, end = end + delta)
+
+    override fun scaledTo(target: Rect): VectorShape {
+        val from = bounds()
+        return copy(start = mapPoint(start, from, target), end = mapPoint(end, from, target))
+    }
+
+    override fun restyled(strokeColor: Color, strokeWidth: Float, fillColor: Color?): VectorShape =
+        copy(strokeColor = strokeColor, strokeWidth = strokeWidth)
+
+    override fun withId(id: String): VectorShape = copy(id = id)
 }
 
 data class FreehandShape(
@@ -86,6 +116,16 @@ data class FreehandShape(
     }
 
     override fun translated(delta: Offset): VectorShape = copy(points = points.map { it + delta })
+
+    override fun scaledTo(target: Rect): VectorShape {
+        val from = bounds()
+        return copy(points = points.map { mapPoint(it, from, target) })
+    }
+
+    override fun restyled(strokeColor: Color, strokeWidth: Float, fillColor: Color?): VectorShape =
+        copy(strokeColor = strokeColor, strokeWidth = strokeWidth)
+
+    override fun withId(id: String): VectorShape = copy(id = id)
 }
 
 data class ImageShape(
@@ -101,6 +141,9 @@ data class ImageShape(
 
     override fun bounds(): Rect = Rect(topLeft, size)
     override fun translated(delta: Offset): VectorShape = copy(topLeft = topLeft + delta)
+    override fun scaledTo(target: Rect): VectorShape = copy(topLeft = target.topLeft, size = target.size)
+    override fun restyled(strokeColor: Color, strokeWidth: Float, fillColor: Color?): VectorShape = this
+    override fun withId(id: String): VectorShape = copy(id = id)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

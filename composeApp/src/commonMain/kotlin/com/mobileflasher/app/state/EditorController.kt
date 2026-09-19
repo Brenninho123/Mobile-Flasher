@@ -1,6 +1,7 @@
 package com.mobileflasher.app.state
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntSize
@@ -26,6 +27,7 @@ class EditorController {
 
     private var shapeIdCounter = 0
     private var layerIdCounter = 1
+    private var strokeEditActive = false
 
     private val undoStack = ArrayDeque<Project>()
     private val redoStack = ArrayDeque<Project>()
@@ -72,21 +74,159 @@ class EditorController {
 
     fun setStrokeColor(color: Color) {
         _state.update { it.copy(strokeColor = color) }
+        restyleSelected(recordsHistory = true)
     }
 
     fun setFillColor(color: Color?) {
         _state.update { it.copy(fillColor = color) }
+        restyleSelected(recordsHistory = true)
     }
 
     fun setStrokeWidth(width: Float) {
         _state.update { it.copy(strokeWidth = width) }
+        restyleSelected(recordsHistory = !strokeEditActive)
+        if (_state.value.selectedShape != null) strokeEditActive = true
+    }
+
+    fun endStrokeWidthEdit() {
+        strokeEditActive = false
+    }
+
+    private fun restyleSelected(recordsHistory: Boolean) {
+        val current = _state.value
+        val selected = current.selectedShape ?: return
+        if (selected is ImageShape) return
+        if (current.currentLayer?.isLocked == true) return
+        if (recordsHistory) recordHistory()
+        _state.update { state ->
+            state.withCurrentFrame { frame ->
+                frame.copy(
+                    shapes = frame.shapes.map { shape ->
+                        if (shape.id == selected.id) shape.restyled(state.strokeColor, state.strokeWidth, state.fillColor) else shape
+                    }
+                )
+            }
+        }
     }
 
     fun selectShape(shapeId: String?) {
         _state.update { it.copy(selectedShapeId = shapeId) }
     }
 
+    fun toggleGrid() {
+        _state.update { it.copy(gridVisible = !it.gridVisible) }
+    }
+
+    fun setProjectName(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        _state.update { it.copy(project = it.project.copy(name = trimmed)) }
+    }
+
+    fun setFrameRate(frameRate: Int) {
+        _state.update { it.copy(project = it.project.copy(frameRate = frameRate.coerceIn(1, 60))) }
+    }
+
+    fun resizeShape(shapeId: String, target: Rect) {
+        _state.update { current ->
+            current.withCurrentFrame { frame ->
+                frame.copy(shapes = frame.shapes.map { if (it.id == shapeId) it.scaledTo(target) else it })
+            }
+        }
+    }
+
+    fun duplicateSelectedShape() {
+        val current = _state.value
+        val selected = current.selectedShape ?: return
+        if (current.currentLayer?.isLocked == true) return
+        recordHistory()
+        val copy = selected.translated(Offset(24f, 24f)).withId(nextShapeId())
+        _state.update { state ->
+            state.withCurrentFrame { frame -> frame.copy(shapes = frame.shapes + copy) }.copy(selectedShapeId = copy.id)
+        }
+    }
+
+    fun bringSelectedToFront() {
+        reorderSelected { shapes, shape -> shapes.filterNot { it.id == shape.id } + shape }
+    }
+
+    fun sendSelectedToBack() {
+        reorderSelected { shapes, shape -> listOf(shape) + shapes.filterNot { it.id == shape.id } }
+    }
+
+    private fun reorderSelected(reorder: (List<VectorShape>, VectorShape) -> List<VectorShape>) {
+        val current = _state.value
+        val selected = current.selectedShape ?: return
+        if (current.currentLayer?.isLocked == true) return
+        recordHistory()
+        _state.update { state ->
+            state.withCurrentFrame { frame -> frame.copy(shapes = reorder(frame.shapes, selected)) }
+        }
+    }
+
+    fun toggleLayerLock(index: Int) {
+        _state.update { current -> current.withLayer(index) { layer -> layer.copy(isLocked = !layer.isLocked) } }
+    }
+
+    fun deleteLayer(index: Int) {
+        val current = _state.value
+        if (current.project.layers.size <= 1 || index !in current.project.layers.indices) return
+        recordHistory()
+        _state.update { state ->
+            val layers = state.project.layers.filterIndexed { i, _ -> i != index }
+            val project = state.project.copy(layers = layers)
+            state.copy(
+                project = project,
+                currentLayerIndex = state.currentLayerIndex.coerceAtMost(layers.lastIndex),
+                currentFrameIndex = state.currentFrameIndex.coerceAtMost(project.frameCount - 1),
+                selectedShapeId = null
+            )
+        }
+    }
+
+    fun deleteCurrentFrame() {
+        val current = _state.value
+        val layer = current.currentLayer ?: return
+        if (layer.frames.size <= 1 || current.currentFrameIndex !in layer.frames.indices) return
+        recordHistory()
+        _state.update { state ->
+            val updated = state.withLayer(state.currentLayerIndex) { target ->
+                val remaining = target.frames.filterIndexed { i, _ -> i != state.currentFrameIndex }
+                target.copy(frames = remaining.mapIndexed { i, frame -> frame.copy(index = i) })
+            }
+            updated.copy(
+                currentFrameIndex = state.currentFrameIndex.coerceAtMost(updated.project.frameCount - 1),
+                selectedShapeId = null
+            )
+        }
+    }
+
+    fun selectCell(layerIndex: Int, frameIndex: Int) {
+        _state.update { current ->
+            val maxIndex = current.project.frameCount - 1
+            current.copy(
+                currentLayerIndex = layerIndex,
+                currentFrameIndex = frameIndex.coerceIn(0, maxIndex),
+                selectedShapeId = null
+            )
+        }
+    }
+
+    private fun canEditCurrentLayer(): Boolean {
+        val layer = _state.value.currentLayer ?: return false
+        if (layer.isLocked) {
+            setStatusMessage("Layer is locked")
+            return false
+        }
+        if (!layer.isVisible) {
+            setStatusMessage("Layer is hidden")
+            return false
+        }
+        return true
+    }
+
     fun addShape(shape: VectorShape) {
+        if (!canEditCurrentLayer()) return
         recordHistory()
         _state.update { current ->
             current.withCurrentFrame { frame -> frame.copy(shapes = frame.shapes + shape) }
@@ -211,6 +351,7 @@ class EditorController {
             setStatusMessage("No shapes found in that SVG file")
             return
         }
+        if (!canEditCurrentLayer()) return
         recordHistory()
         _state.update { current -> current.withCurrentFrame { frame -> frame.copy(shapes = frame.shapes + shapes) } }
     }

@@ -1,8 +1,6 @@
 package com.mobileflasher.app.render
 
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -17,7 +15,7 @@ import com.mobileflasher.app.model.RectangleShape
 import com.mobileflasher.app.model.VectorShape
 import kotlin.math.roundToInt
 
-fun DrawScope.drawShape(shape: VectorShape, isSelected: Boolean = false, alpha: Float = 1f) {
+fun DrawScope.drawShape(shape: VectorShape, alpha: Float = 1f) {
     when (shape) {
         is RectangleShape -> {
             shape.fillColor?.let { drawRect(color = it, topLeft = shape.topLeft, size = shape.size, alpha = alpha, style = Fill) }
@@ -36,15 +34,6 @@ fun DrawScope.drawShape(shape: VectorShape, isSelected: Boolean = false, alpha: 
             dstOffset = IntOffset(shape.topLeft.x.roundToInt(), shape.topLeft.y.roundToInt()),
             dstSize = IntSize(shape.size.width.roundToInt(), shape.size.height.roundToInt()),
             alpha = alpha
-        )
-    }
-    if (isSelected) {
-        val bounds = shape.bounds()
-        drawRect(
-            color = Color(0xFFFFC107),
-            topLeft = bounds.topLeft,
-            size = Size(bounds.width, bounds.height),
-            style = Stroke(width = 1.5f)
         )
     }
 }
