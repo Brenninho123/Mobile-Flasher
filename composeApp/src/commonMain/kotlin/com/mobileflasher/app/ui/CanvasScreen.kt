@@ -37,6 +37,7 @@ fun CanvasScreen(
     onShapeCreated: (VectorShape) -> Unit,
     onShapeSelected: (String?) -> Unit,
     onShapeMoved: (String, Offset) -> Unit,
+    onBeginMoveGesture: () -> Unit,
     onCanvasSizeChanged: (IntSize) -> Unit,
     nextShapeId: () -> String
 ) {
@@ -62,6 +63,7 @@ fun CanvasScreen(
                                 val hit = currentFrame?.shapes?.lastOrNull { it.bounds().contains(offset) }
                                 draggingShapeId = hit?.id
                                 onShapeSelected(hit?.id)
+                                if (hit != null) onBeginMoveGesture()
                             }
                             Tool.PEN -> penPoints = listOf(offset)
                             else -> Unit
@@ -98,6 +100,15 @@ fun CanvasScreen(
             }
     ) {
         Canvas(modifier = Modifier.matchParentSize()) {
+            if (uiState.onionSkinEnabled && currentLayer != null) {
+                currentLayer.frames.getOrNull(uiState.currentFrameIndex - 1)?.shapes?.forEach { shape ->
+                    drawShape(shape, alpha = 0.25f)
+                }
+                currentLayer.frames.getOrNull(uiState.currentFrameIndex + 1)?.shapes?.forEach { shape ->
+                    drawShape(shape, alpha = 0.15f)
+                }
+            }
+
             uiState.project.layers.filter { it.isVisible }.forEach { layer ->
                 val frame = layer.frames.getOrNull(uiState.currentFrameIndex) ?: layer.frames.lastOrNull()
                 frame?.shapes?.forEach { shape -> drawShape(shape, isSelected = shape.id == uiState.selectedShapeId) }

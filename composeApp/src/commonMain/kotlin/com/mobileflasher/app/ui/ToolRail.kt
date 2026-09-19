@@ -14,12 +14,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.CropSquare
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.NearMe
+import androidx.compose.material.icons.filled.Opacity
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -48,7 +52,10 @@ fun ToolRail(
     onToolSelected: (Tool) -> Unit,
     onStrokeColorSelected: (Color) -> Unit,
     onFillColorSelected: (Color?) -> Unit,
-    onStrokeWidthChanged: (Float) -> Unit
+    onStrokeWidthChanged: (Float) -> Unit,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    onToggleOnionSkin: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -58,6 +65,22 @@ fun ToolRail(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+        IconButton(onClick = onUndo, enabled = uiState.canUndo) {
+            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
+        }
+        IconButton(onClick = onRedo, enabled = uiState.canRedo) {
+            Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo")
+        }
+        IconButton(onClick = onToggleOnionSkin) {
+            Icon(
+                Icons.Filled.Opacity,
+                contentDescription = "Toggle onion skin",
+                tint = if (uiState.onionSkinEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
         ToolButton(Tool.SELECT, Icons.Filled.NearMe, "Select", uiState.selectedTool, onToolSelected)
         ToolButton(Tool.RECTANGLE, Icons.Filled.CropSquare, "Rectangle", uiState.selectedTool, onToolSelected)
         ToolButton(Tool.ELLIPSE, Icons.Filled.Circle, "Ellipse", uiState.selectedTool, onToolSelected)

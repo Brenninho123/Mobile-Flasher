@@ -1,6 +1,7 @@
 package com.mobileflasher.app.ui
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Image
@@ -23,6 +24,7 @@ import androidx.compose.runtime.setValue
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopBar(
+    onHome: () -> Unit,
     onImportImage: () -> Unit,
     onImportSvg: () -> Unit,
     onExportPng: () -> Unit,
@@ -33,6 +35,11 @@ fun TopBar(
     var menuExpanded by remember { mutableStateOf(false) }
     TopAppBar(
         title = { Text("Mobile Flasher") },
+        navigationIcon = {
+            IconButton(onClick = onHome) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Home")
+            }
+        },
         actions = {
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = "Menu")

@@ -27,7 +27,44 @@ class EditorController {
     private var shapeIdCounter = 0
     private var layerIdCounter = 1
 
+    private val undoStack = ArrayDeque<Project>()
+    private val redoStack = ArrayDeque<Project>()
+    private val maxHistorySize = 50
+
     fun nextShapeId(): String = "shape-${shapeIdCounter++}"
+
+    fun beginMoveGesture() {
+        recordHistory()
+    }
+
+    fun undo() {
+        val previous = undoStack.removeLastOrNull() ?: return
+        redoStack.addLast(_state.value.project)
+        _state.update { it.copy(project = previous, selectedShapeId = null) }
+        updateHistoryFlags()
+    }
+
+    fun redo() {
+        val next = redoStack.removeLastOrNull() ?: return
+        undoStack.addLast(_state.value.project)
+        _state.update { it.copy(project = next, selectedShapeId = null) }
+        updateHistoryFlags()
+    }
+
+    fun toggleOnionSkin() {
+        _state.update { it.copy(onionSkinEnabled = !it.onionSkinEnabled) }
+    }
+
+    private fun recordHistory() {
+        undoStack.addLast(_state.value.project)
+        if (undoStack.size > maxHistorySize) undoStack.removeFirst()
+        redoStack.clear()
+        updateHistoryFlags()
+    }
+
+    private fun updateHistoryFlags() {
+        _state.update { it.copy(canUndo = undoStack.isNotEmpty(), canRedo = redoStack.isNotEmpty()) }
+    }
 
     fun selectTool(tool: Tool) {
         _state.update { it.copy(selectedTool = tool, selectedShapeId = null) }
@@ -50,6 +87,7 @@ class EditorController {
     }
 
     fun addShape(shape: VectorShape) {
+        recordHistory()
         _state.update { current ->
             current.withCurrentFrame { frame -> frame.copy(shapes = frame.shapes + shape) }
                 .copy(selectedShapeId = shape.id)
@@ -70,6 +108,7 @@ class EditorController {
 
     fun deleteSelectedShape() {
         val shapeId = _state.value.selectedShapeId ?: return
+        recordHistory()
         _state.update { current ->
             current.withCurrentFrame { frame ->
                 frame.copy(shapes = frame.shapes.filterNot { it.id == shapeId })
@@ -97,14 +136,17 @@ class EditorController {
     }
 
     fun addFrame() {
+        recordHistory()
         _state.update { current -> current.withLayer(current.currentLayerIndex) { layer -> layer.appendFrame(isKeyframe = false) } }
     }
 
     fun addKeyframe() {
+        recordHistory()
         _state.update { current -> current.withLayer(current.currentLayerIndex) { layer -> layer.appendFrame(isKeyframe = true) } }
     }
 
     fun addLayer() {
+        recordHistory()
         _state.update { current ->
             val newLayer = Layer(id = "layer-${layerIdCounter++}", name = "Layer ${current.project.layers.size + 1}")
             current.copy(
@@ -169,6 +211,7 @@ class EditorController {
             setStatusMessage("No shapes found in that SVG file")
             return
         }
+        recordHistory()
         _state.update { current -> current.withCurrentFrame { frame -> frame.copy(shapes = frame.shapes + shapes) } }
     }
 
@@ -185,6 +228,8 @@ class EditorController {
     }
 
     fun loadProject(project: Project) {
+        undoStack.clear()
+        redoStack.clear()
         _state.update {
             EditorUiState(
                 project = project,

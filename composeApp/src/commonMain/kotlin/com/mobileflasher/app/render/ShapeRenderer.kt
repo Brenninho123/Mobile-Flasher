@@ -17,24 +17,25 @@ import com.mobileflasher.app.model.RectangleShape
 import com.mobileflasher.app.model.VectorShape
 import kotlin.math.roundToInt
 
-fun DrawScope.drawShape(shape: VectorShape, isSelected: Boolean = false) {
+fun DrawScope.drawShape(shape: VectorShape, isSelected: Boolean = false, alpha: Float = 1f) {
     when (shape) {
         is RectangleShape -> {
-            shape.fillColor?.let { drawRect(color = it, topLeft = shape.topLeft, size = shape.size, style = Fill) }
-            drawRect(color = shape.strokeColor, topLeft = shape.topLeft, size = shape.size, style = Stroke(width = shape.strokeWidth))
+            shape.fillColor?.let { drawRect(color = it, topLeft = shape.topLeft, size = shape.size, alpha = alpha, style = Fill) }
+            drawRect(color = shape.strokeColor, topLeft = shape.topLeft, size = shape.size, alpha = alpha, style = Stroke(width = shape.strokeWidth))
         }
         is EllipseShape -> {
-            shape.fillColor?.let { drawOval(color = it, topLeft = shape.topLeft, size = shape.size, style = Fill) }
-            drawOval(color = shape.strokeColor, topLeft = shape.topLeft, size = shape.size, style = Stroke(width = shape.strokeWidth))
+            shape.fillColor?.let { drawOval(color = it, topLeft = shape.topLeft, size = shape.size, alpha = alpha, style = Fill) }
+            drawOval(color = shape.strokeColor, topLeft = shape.topLeft, size = shape.size, alpha = alpha, style = Stroke(width = shape.strokeWidth))
         }
-        is LineShape -> drawLine(color = shape.strokeColor, start = shape.start, end = shape.end, strokeWidth = shape.strokeWidth)
+        is LineShape -> drawLine(color = shape.strokeColor, start = shape.start, end = shape.end, strokeWidth = shape.strokeWidth, alpha = alpha)
         is FreehandShape -> if (shape.points.size > 1) {
-            drawPath(pointsToPath(shape.points), shape.strokeColor, style = Stroke(width = shape.strokeWidth))
+            drawPath(pointsToPath(shape.points), shape.strokeColor, alpha = alpha, style = Stroke(width = shape.strokeWidth))
         }
         is ImageShape -> drawImage(
             image = shape.image,
             dstOffset = IntOffset(shape.topLeft.x.roundToInt(), shape.topLeft.y.roundToInt()),
-            dstSize = IntSize(shape.size.width.roundToInt(), shape.size.height.roundToInt())
+            dstSize = IntSize(shape.size.width.roundToInt(), shape.size.height.roundToInt()),
+            alpha = alpha
         )
     }
     if (isSelected) {

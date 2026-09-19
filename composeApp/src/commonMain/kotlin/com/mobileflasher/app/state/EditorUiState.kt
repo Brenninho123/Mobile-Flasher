@@ -16,7 +16,10 @@ data class EditorUiState(
     val fillColor: Color? = Color(0xFF42A5F5),
     val strokeWidth: Float = 4f,
     val canvasSize: IntSize = IntSize.Zero,
-    val statusMessage: String? = null
+    val statusMessage: String? = null,
+    val canUndo: Boolean = false,
+    val canRedo: Boolean = false,
+    val onionSkinEnabled: Boolean = true
 )
 
 val Project.frameCount: Int
