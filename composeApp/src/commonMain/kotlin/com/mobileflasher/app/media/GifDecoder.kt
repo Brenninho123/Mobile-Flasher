@@ -11,7 +11,7 @@ object GifDecoder {
 
     fun isGif(bytes: ByteArray): Boolean {
         if (bytes.size < 6) return false
-        val header = String(CharArray(6) { (bytes[it].toInt() and 0xFF).toChar() })
+        val header = CharArray(6) { (bytes[it].toInt() and 0xFF).toChar() }.concatToString()
         return header == "GIF87a" || header == "GIF89a"
     }
 
