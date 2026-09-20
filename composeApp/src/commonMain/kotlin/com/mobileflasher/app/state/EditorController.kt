@@ -15,8 +15,6 @@ import com.mobileflasher.app.media.ImportedAnimation
 import com.mobileflasher.app.media.decodeAnimation
 import com.mobileflasher.app.platform.decodePngToImageBitmap
 import com.mobileflasher.app.svg.importSvg
-import com.mobileflasher.app.xml.parseProjectXml
-import com.mobileflasher.app.xml.writeProjectXml
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -470,18 +468,6 @@ class EditorController {
         if (!canEditCurrentLayer()) return
         recordHistory()
         _state.update { current -> current.withCurrentFrame { frame -> frame.copy(shapes = frame.shapes + shapes) } }
-    }
-
-    fun serializeProjectXml(): String = writeProjectXml(_state.value.project)
-
-    fun loadProjectXml(xml: String) {
-        val project = try {
-            parseProjectXml(xml)
-        } catch (e: Exception) {
-            setStatusMessage("Could not open that project file")
-            return
-        }
-        loadProject(project)
     }
 
     fun loadProject(

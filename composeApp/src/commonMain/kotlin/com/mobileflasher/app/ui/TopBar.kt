@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Draw
@@ -58,6 +59,7 @@ fun TopBar(
     onExportGif: () -> Unit,
     onExportMp4: () -> Unit,
     onSaveProject: () -> Unit,
+    onShareProject: () -> Unit,
     onOpenProject: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -150,8 +152,9 @@ fun TopBar(
                     MenuEntry("GIF or video as frames", Icons.Filled.VideoLibrary) { menuExpanded = false; onImportAnimation() }
                     HorizontalDivider(color = scheme.outlineVariant)
                     MenuHeader("Project")
-                    MenuEntry("Open", Icons.Filled.FolderOpen) { menuExpanded = false; onOpenProject() }
-                    MenuEntry("Save", Icons.Filled.Save) { menuExpanded = false; onSaveProject() }
+                    MenuEntry("Open .mflash file", Icons.Filled.FolderOpen) { menuExpanded = false; onOpenProject() }
+                    MenuEntry("Save to library", Icons.Filled.Save) { menuExpanded = false; onSaveProject() }
+                    MenuEntry("Share .mflash file", Icons.Filled.Share) { menuExpanded = false; onShareProject() }
                     HorizontalDivider(color = scheme.outlineVariant)
                     MenuHeader("Export")
                     MenuEntry("Current frame as PNG", Icons.Filled.FileDownload) { menuExpanded = false; onExportPng() }

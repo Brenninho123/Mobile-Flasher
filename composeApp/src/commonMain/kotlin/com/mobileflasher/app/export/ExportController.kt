@@ -1,5 +1,6 @@
 package com.mobileflasher.app.export
 
+import com.mobileflasher.app.mflash.MflashFormat
 import com.mobileflasher.app.model.Project
 import com.mobileflasher.app.platform.encodeMp4
 import com.mobileflasher.app.platform.encodeToPng
@@ -38,8 +39,8 @@ class ExportController(
         return true
     }
 
-    fun exportProjectXml(xml: String, projectName: String) {
-        saveBytes(xml.encodeToByteArray(), sanitizeFileName(projectName) + ".mflash.xml", "text/xml")
+    fun exportProjectFile(bytes: ByteArray, projectName: String) {
+        saveBytes(bytes, sanitizeFileName(projectName) + "." + MflashFormat.Extension, MflashFormat.MimeType)
     }
 
     private fun sanitizeFileName(name: String): String {

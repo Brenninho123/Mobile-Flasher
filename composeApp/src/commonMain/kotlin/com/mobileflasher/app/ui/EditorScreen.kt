@@ -41,6 +41,8 @@ fun EditorScreen(
     pickSvg: () -> Unit,
     pickAnimation: () -> Unit,
     pickProject: () -> Unit,
+    onSaveProject: () -> Unit,
+    onShareProject: () -> Unit,
     onHome: () -> Unit,
     snackbarHostState: SnackbarHostState
 ) {
@@ -90,9 +92,8 @@ fun EditorScreen(
                             if (!exported) controller.setStatusMessage("Video export is not available on this device")
                         }
                     },
-                    onSaveProject = {
-                        exportController.exportProjectXml(controller.serializeProjectXml(), uiState.project.name)
-                    },
+                    onSaveProject = onSaveProject,
+                    onShareProject = onShareProject,
                     onOpenProject = pickProject
                 )
             },

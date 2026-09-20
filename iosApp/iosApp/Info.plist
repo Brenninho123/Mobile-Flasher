@@ -22,6 +22,43 @@
     <true/>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Mobile Flasher needs access to your photo library to import images onto the canvas.</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Mobile Flasher Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.mobileflasher.mflash</string>
+            </array>
+        </dict>
+    </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.mobileflasher.mflash</string>
+            <key>UTTypeDescription</key>
+            <string>Mobile Flasher Project</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>mflash</string>
+                </array>
+                <key>public.mime-type</key>
+                <string>application/x-mobile-flasher</string>
+            </dict>
+        </dict>
+    </array>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>

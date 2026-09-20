@@ -82,6 +82,14 @@ fun SettingsSheet(
             )
 
             SheetDivider()
+            SectionTitle("Library")
+            SwitchRow(
+                title = "Autosave",
+                subtitle = "Keep projects saved on this device as you draw",
+                checked = settings.autosave,
+                onCheckedChange = { value -> onChange { it.copy(autosave = value) } }
+            )
+
             SectionTitle("New projects")
             Text(
                 text = "Frame rate",

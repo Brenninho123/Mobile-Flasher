@@ -15,7 +15,7 @@ import com.mobileflasher.app.model.VectorShape
 import com.mobileflasher.app.platform.decodePngToImageBitmap
 import kotlin.math.roundToInt
 
-fun writeProjectXml(project: Project): String {
+fun writeProjectXml(project: Project, assets: MutableMap<String, ByteArray>? = null): String {
     val builder = StringBuilder()
     builder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
     builder.append("<project name=\"${escapeXml(project.name)}\" frameRate=\"${project.frameRate}\">\n")
@@ -27,7 +27,7 @@ fun writeProjectXml(project: Project): String {
         for (frame in layer.frames) {
             builder.append("    <frame index=\"${frame.index}\" keyframe=\"${frame.isKeyframe}\">\n")
             for (shape in frame.shapes) {
-                builder.append(writeShapeXml(shape))
+                builder.append(writeShapeXml(shape, assets))
             }
             builder.append("    </frame>\n")
         }
@@ -37,12 +37,12 @@ fun writeProjectXml(project: Project): String {
     return builder.toString()
 }
 
-fun parseProjectXml(xml: String): Project {
+fun parseProjectXml(xml: String, assets: Map<String, ByteArray> = emptyMap()): Project {
     val root = parseXml(xml)
     require(root.name == "project") { "Not a Mobile Flasher project file (root element is <${root.name}>)" }
     val name = root.attributes["name"] ?: "Untitled"
     val frameRate = root.attributes["frameRate"]?.toIntOrNull() ?: 24
-    val layers = root.children.filter { it.name == "layer" }.map { parseLayerXml(it) }
+    val layers = root.children.filter { it.name == "layer" }.map { parseLayerXml(it, assets) }
     return Project(
         name = name,
         frameRate = frameRate,
@@ -50,7 +50,7 @@ fun parseProjectXml(xml: String): Project {
     )
 }
 
-private fun writeShapeXml(shape: VectorShape): String = when (shape) {
+private fun writeShapeXml(shape: VectorShape, assets: MutableMap<String, ByteArray>?): String = when (shape) {
     is RectangleShape -> "      <rect id=\"${escapeXml(shape.id)}\" x=\"${shape.topLeft.x}\" y=\"${shape.topLeft.y}\" " +
         "width=\"${shape.size.width}\" height=\"${shape.size.height}\" stroke=\"${colorToHex(shape.strokeColor)}\" " +
         "strokeWidth=\"${shape.strokeWidth}\" fill=\"${shape.fillColor?.let { colorToHex(it) } ?: ""}\" />\n"
@@ -66,12 +66,12 @@ private fun writeShapeXml(shape: VectorShape): String = when (shape) {
         "width=\"${shape.size.width}\" height=\"${shape.size.height}\" data=\"${base64Encode(shape.sourcePng)}\" />\n"
 }
 
-private fun parseLayerXml(node: XmlNode): Layer {
+private fun parseLayerXml(node: XmlNode, assets: Map<String, ByteArray>): Layer {
     val id = node.attributes["id"] ?: "layer-0"
     val name = node.attributes["name"] ?: "Layer"
     val visible = node.attributes["visible"]?.toBooleanStrictOrNull() ?: true
     val locked = node.attributes["locked"]?.toBooleanStrictOrNull() ?: false
-    val frames = node.children.filter { it.name == "frame" }.map { parseFrameXml(it) }
+    val frames = node.children.filter { it.name == "frame" }.map { parseFrameXml(it, assets) }
     return Layer(
         id = id,
         name = name,
@@ -81,14 +81,14 @@ private fun parseLayerXml(node: XmlNode): Layer {
     )
 }
 
-private fun parseFrameXml(node: XmlNode): Frame {
+private fun parseFrameXml(node: XmlNode, assets: Map<String, ByteArray>): Frame {
     val index = node.attributes["index"]?.toIntOrNull() ?: 0
     val isKeyframe = node.attributes["keyframe"]?.toBooleanStrictOrNull() ?: true
-    val shapes = node.children.mapNotNull { parseShapeXml(it) }
+    val shapes = node.children.mapNotNull { parseShapeXml(it, assets) }
     return Frame(index = index, isKeyframe = isKeyframe, shapes = shapes)
 }
 
-private fun parseShapeXml(node: XmlNode): VectorShape? {
+private fun parseShapeXml(node: XmlNode, assets: Map<String, ByteArray>): VectorShape? {
     val id = node.attributes["id"] ?: return null
     return when (node.name) {
         "rect" -> RectangleShape(
@@ -124,8 +124,12 @@ private fun parseShapeXml(node: XmlNode): VectorShape? {
             strokeWidth = node.attributes["strokeWidth"]?.toFloatOrNull() ?: 2f
         )
         "image" -> {
-            val data = node.attributes["data"] ?: return null
-            val bytes = base64Decode(data)
+            val assetKey = node.attributes["asset"]
+            val bytes = if (assetKey != null) {
+                assets[assetKey] ?: return null
+            } else {
+                base64Decode(node.attributes["data"] ?: return null)
+            }
             ImageShape(
                 id = id,
                 topLeft = Offset(node.attributes.requireFloat("x"), node.attributes.requireFloat("y")),
@@ -158,4 +162,11 @@ private fun hexToColor(hex: String): Color {
     val g = ((argb shr 8) and 0xFF) / 255f
     val b = (argb and 0xFF) / 255f
     return Color(red = r, green = g, blue = b, alpha = a)
+}
+
+private fun imageSourceAttribute(png: ByteArray, assets: MutableMap<String, ByteArray>?): String {
+    if (assets == null) return "data=\"${base64Encode(png)}\""
+    val existing = assets.entries.firstOrNull { it.value === png }?.key
+    val key = existing ?: "img-${assets.size}".also { assets[it] = png }
+    return "asset=\"$key\""
 }

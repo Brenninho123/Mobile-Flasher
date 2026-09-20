@@ -74,6 +74,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.mobileflasher.app.library.LibraryEntry
 import com.mobileflasher.app.settings.AppSettings
 import kotlin.math.PI
 import kotlin.math.cos
@@ -90,7 +91,13 @@ fun HomeScreen(
     onSettingsChange: ((AppSettings) -> AppSettings) -> Unit,
     onSettingsReset: () -> Unit,
     onNewProject: (String, Int) -> Unit,
-    onOpenProject: () -> Unit
+    onOpenProject: () -> Unit,
+    entries: List<LibraryEntry>,
+    nowMillis: Long,
+    loadThumbnail: (String) -> ByteArray?,
+    onOpenEntry: (LibraryEntry) -> Unit,
+    onShareEntry: (LibraryEntry) -> Unit,
+    onDeleteEntry: (LibraryEntry) -> Unit
 ) {
     var showNewProject by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
@@ -199,7 +206,18 @@ fun HomeScreen(
                     onClick = onOpenProject,
                     outlined = true,
                     icon = Icons.Filled.FolderOpen,
-                    label = "Open project"
+                    label = "Open .mflash file"
+                )
+            }
+            Spacer(modifier = Modifier.height(28.dp))
+            Reveal(entered, 560, animate) {
+                LibrarySection(
+                    entries = entries,
+                    nowMillis = nowMillis,
+                    loadThumbnail = loadThumbnail,
+                    onOpen = onOpenEntry,
+                    onShare = onShareEntry,
+                    onDelete = onDeleteEntry
                 )
             }
             Spacer(modifier = Modifier.height(32.dp))

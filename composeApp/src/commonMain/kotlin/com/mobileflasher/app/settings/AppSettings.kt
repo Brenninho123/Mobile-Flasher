@@ -14,7 +14,8 @@ data class AppSettings(
     val defaultFrameRate: Int = 24,
     val gridByDefault: Boolean = false,
     val snapByDefault: Boolean = false,
-    val onionSkinByDefault: Boolean = true
+    val onionSkinByDefault: Boolean = true,
+    val autosave: Boolean = true
 )
 
 class SettingsController(private val store: KeyValueStore) {
@@ -42,7 +43,8 @@ class SettingsController(private val store: KeyValueStore) {
             defaultFrameRate = store.getInt(KeyFrameRate, defaults.defaultFrameRate).coerceIn(1, 60),
             gridByDefault = store.getBoolean(KeyGrid, defaults.gridByDefault),
             snapByDefault = store.getBoolean(KeySnap, defaults.snapByDefault),
-            onionSkinByDefault = store.getBoolean(KeyOnion, defaults.onionSkinByDefault)
+            onionSkinByDefault = store.getBoolean(KeyOnion, defaults.onionSkinByDefault),
+            autosave = store.getBoolean(KeyAutosave, defaults.autosave)
         )
     }
 
@@ -53,6 +55,7 @@ class SettingsController(private val store: KeyValueStore) {
         store.putBoolean(KeyGrid, settings.gridByDefault)
         store.putBoolean(KeySnap, settings.snapByDefault)
         store.putBoolean(KeyOnion, settings.onionSkinByDefault)
+        store.putBoolean(KeyAutosave, settings.autosave)
     }
 
     private companion object {
@@ -62,5 +65,6 @@ class SettingsController(private val store: KeyValueStore) {
         const val KeyGrid = "grid_by_default"
         const val KeySnap = "snap_by_default"
         const val KeyOnion = "onion_skin_by_default"
+        const val KeyAutosave = "autosave"
     }
 }
