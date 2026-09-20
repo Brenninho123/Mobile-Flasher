@@ -1,6 +1,7 @@
 package com.mobileflasher.app.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.EaseInOutSine
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -9,12 +10,14 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +42,7 @@ import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -47,12 +51,14 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -65,8 +71,10 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.mobileflasher.app.settings.AppSettings
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -78,21 +86,28 @@ private val BoltSky = Color(0xFF4DB8FF)
 
 @Composable
 fun HomeScreen(
+    settings: AppSettings,
+    onSettingsChange: ((AppSettings) -> AppSettings) -> Unit,
+    onSettingsReset: () -> Unit,
     onNewProject: (String, Int) -> Unit,
     onOpenProject: () -> Unit
 ) {
     var showNewProject by remember { mutableStateOf(false) }
-    var entered by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    val animate = !settings.reduceMotion
+    var entered by remember { mutableStateOf(!animate) }
     val scheme = MaterialTheme.colorScheme
 
     LaunchedEffect(Unit) { entered = true }
 
-    val drift = rememberInfiniteTransition().animateFloat(
+    val staticState = remember { mutableStateOf(0.5f) }
+
+    val drift: State<Float> = if (!animate) staticState else rememberInfiniteTransition().animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(22000, easing = LinearEasing))
     )
-    val breathe = rememberInfiniteTransition().animateFloat(
+    val breathe: State<Float> = if (!animate) staticState else rememberInfiniteTransition().animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(3200, easing = EaseInOutSine), RepeatMode.Reverse)
@@ -140,11 +155,11 @@ fun HomeScreen(
                 .widthIn(max = 420.dp)
                 .padding(horizontal = 28.dp, vertical = 24.dp)
         ) {
-            Reveal(entered, 0) {
-                AnimatedLogo()
+            Reveal(entered, 0, animate) {
+                AnimatedLogo(animate)
             }
             Spacer(modifier = Modifier.height(20.dp))
-            Reveal(entered, 120) {
+            Reveal(entered, 120, animate) {
                 Text(
                     text = "Mobile Flasher",
                     style = MaterialTheme.typography.headlineLarge.copy(
@@ -157,7 +172,7 @@ fun HomeScreen(
                 )
             }
             Spacer(modifier = Modifier.height(6.dp))
-            Reveal(entered, 200) {
+            Reveal(entered, 200, animate) {
                 Text(
                     text = "Vector drawing and frame animation, built for your phone",
                     style = MaterialTheme.typography.bodyMedium,
@@ -166,11 +181,11 @@ fun HomeScreen(
                 )
             }
             Spacer(modifier = Modifier.height(24.dp))
-            Reveal(entered, 300) {
-                SketchPreview()
+            Reveal(entered, 300, animate) {
+                SketchPreview(animate)
             }
             Spacer(modifier = Modifier.height(24.dp))
-            Reveal(entered, 420) {
+            Reveal(entered, 420, animate) {
                 PressableButton(
                     onClick = { showNewProject = true },
                     outlined = false,
@@ -179,7 +194,7 @@ fun HomeScreen(
                 )
             }
             Spacer(modifier = Modifier.height(12.dp))
-            Reveal(entered, 500) {
+            Reveal(entered, 500, animate) {
                 PressableButton(
                     onClick = onOpenProject,
                     outlined = true,
@@ -188,7 +203,7 @@ fun HomeScreen(
                 )
             }
             Spacer(modifier = Modifier.height(32.dp))
-            Reveal(entered, 600) {
+            Reveal(entered, 600, animate) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -203,13 +218,30 @@ fun HomeScreen(
                 }
             }
         }
+        SettingsGear(
+            open = showSettings,
+            animate = animate,
+            onClick = { showSettings = true },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+        )
+    }
+
+    if (showSettings) {
+        SettingsSheet(
+            settings = settings,
+            onChange = onSettingsChange,
+            onReset = onSettingsReset,
+            onDismiss = { showSettings = false }
+        )
     }
 
     if (showNewProject) {
         ProjectDialog(
             title = "New project",
             initialName = "Untitled",
-            initialFrameRate = 24,
+            initialFrameRate = settings.defaultFrameRate,
             confirmLabel = "Create",
             onDismiss = { showNewProject = false },
             onConfirm = { name, frameRate ->
@@ -221,10 +253,10 @@ fun HomeScreen(
 }
 
 @Composable
-private fun Reveal(visible: Boolean, delayMillis: Int, content: @Composable () -> Unit) {
+private fun Reveal(visible: Boolean, delayMillis: Int, animate: Boolean, content: @Composable () -> Unit) {
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(520, delayMillis, easing = EaseInOutSine)) +
+        enter = if (!animate) EnterTransition.None else fadeIn(tween(520, delayMillis, easing = EaseInOutSine)) +
             slideInVertically(tween(520, delayMillis, easing = EaseInOutSine)) { it / 3 }
     ) {
         content()
@@ -232,14 +264,15 @@ private fun Reveal(visible: Boolean, delayMillis: Int, content: @Composable () -
 }
 
 @Composable
-private fun AnimatedLogo() {
-    val transition = rememberInfiniteTransition()
-    val ripple = transition.animateFloat(
+private fun AnimatedLogo(animate: Boolean) {
+    val still = remember { mutableStateOf(0f) }
+    val transition = if (animate) rememberInfiniteTransition() else null
+    val ripple: State<Float> = if (transition == null) still else transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(2600, easing = LinearEasing))
     )
-    val bob = transition.animateFloat(
+    val bob: State<Float> = if (transition == null) still else transition.animateFloat(
         initialValue = -1f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(2200, easing = EaseInOutSine), RepeatMode.Reverse)
@@ -288,9 +321,10 @@ private fun AnimatedLogo() {
 }
 
 @Composable
-private fun SketchPreview() {
+private fun SketchPreview(animate: Boolean) {
+    val still = remember { mutableStateOf(0.72f) }
     val scheme = MaterialTheme.colorScheme
-    val progress = rememberInfiniteTransition().animateFloat(
+    val progress: State<Float> = if (!animate) still else rememberInfiniteTransition().animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(SketchLoopMillis, easing = LinearEasing))
@@ -402,5 +436,32 @@ private fun FeatureRow(icon: ImageVector, title: String, subtitle: String) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun SettingsGear(open: Boolean, animate: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    val rotation by animateFloatAsState(
+        targetValue = if (open) 120f else 0f,
+        animationSpec = if (animate) spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow) else snap()
+    )
+    Box(
+        modifier = modifier
+            .size(46.dp)
+            .clip(CircleShape)
+            .background(scheme.surfaceContainer.copy(alpha = 0.9f))
+            .border(1.dp, scheme.outlineVariant, CircleShape)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Settings,
+            contentDescription = "Settings",
+            tint = scheme.onSurface,
+            modifier = Modifier
+                .size(24.dp)
+                .graphicsLayer { rotationZ = rotation }
+        )
     }
 }

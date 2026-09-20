@@ -20,7 +20,9 @@ data class EditorUiState(
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
     val onionSkinEnabled: Boolean = true,
-    val gridVisible: Boolean = false
+    val gridVisible: Boolean = false,
+    val snapToGrid: Boolean = false,
+    val busyMessage: String? = null
 )
 
 val Project.frameCount: Int

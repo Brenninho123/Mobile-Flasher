@@ -17,6 +17,8 @@ import platform.UIKit.UIImagePickerControllerEditedImage
 import platform.UIKit.UIImagePickerControllerOriginalImage
 import platform.UIKit.UIImagePickerControllerSourceType
 import platform.UIKit.UINavigationControllerDelegateProtocol
+import platform.UniformTypeIdentifiers.UTTypeGIF
+import platform.UniformTypeIdentifiers.UTTypeMovie
 import platform.UniformTypeIdentifiers.UTTypeXML
 import platform.darwin.NSObject
 import platform.posix.SEEK_END
@@ -118,6 +120,13 @@ actual fun rememberFilePicker(mode: FilePickerMode, onFilePicked: (ByteArray) ->
             }
             FilePickerMode.DOCUMENT -> {
                 val picker = UIDocumentPickerViewController(forOpeningContentTypes = listOf(UTTypeXML))
+                val delegate = DocumentPickerDelegate(onFilePicked)
+                retainedPickerDelegate = delegate
+                picker.delegate = delegate
+                currentRootViewController()?.presentViewController(picker, animated = true, completion = null)
+            }
+            FilePickerMode.MEDIA -> {
+                val picker = UIDocumentPickerViewController(forOpeningContentTypes = listOf(UTTypeGIF, UTTypeMovie))
                 val delegate = DocumentPickerDelegate(onFilePicked)
                 retainedPickerDelegate = delegate
                 picker.delegate = delegate

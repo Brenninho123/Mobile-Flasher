@@ -13,6 +13,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mobileflasher.app.settings.ThemeMode
 
 val BoltAmber = Color(0xFFFFB300)
 val BoltInk = Color(0xFF12151C)
@@ -92,8 +93,13 @@ private val AppShapes = Shapes(
 )
 
 @Composable
-fun MobileFlasherTheme(content: @Composable () -> Unit) {
-    val colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors
+fun MobileFlasherTheme(themeMode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () -> Unit) {
+    val dark = when (themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+    val colorScheme = if (dark) DarkColors else LightColors
     MaterialTheme(
         colorScheme = colorScheme,
         typography = AppTypography,

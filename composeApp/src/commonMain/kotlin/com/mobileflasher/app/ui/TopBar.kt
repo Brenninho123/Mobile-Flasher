@@ -23,6 +23,8 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Draw
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,8 +53,10 @@ fun TopBar(
     onRedo: () -> Unit,
     onImportImage: () -> Unit,
     onImportSvg: () -> Unit,
+    onImportAnimation: () -> Unit,
     onExportPng: () -> Unit,
     onExportGif: () -> Unit,
+    onExportMp4: () -> Unit,
     onSaveProject: () -> Unit,
     onOpenProject: () -> Unit
 ) {
@@ -143,6 +147,7 @@ fun TopBar(
                     MenuHeader("Import")
                     MenuEntry("Image", Icons.Filled.Image) { menuExpanded = false; onImportImage() }
                     MenuEntry("SVG file", Icons.Filled.FolderOpen) { menuExpanded = false; onImportSvg() }
+                    MenuEntry("GIF or video as frames", Icons.Filled.VideoLibrary) { menuExpanded = false; onImportAnimation() }
                     HorizontalDivider(color = scheme.outlineVariant)
                     MenuHeader("Project")
                     MenuEntry("Open", Icons.Filled.FolderOpen) { menuExpanded = false; onOpenProject() }
@@ -151,6 +156,7 @@ fun TopBar(
                     MenuHeader("Export")
                     MenuEntry("Current frame as PNG", Icons.Filled.FileDownload) { menuExpanded = false; onExportPng() }
                     MenuEntry("Animation as GIF", Icons.Filled.Movie) { menuExpanded = false; onExportGif() }
+                    MenuEntry("Animation as MP4 video", Icons.Filled.Videocam) { menuExpanded = false; onExportMp4() }
                 }
             }
         }

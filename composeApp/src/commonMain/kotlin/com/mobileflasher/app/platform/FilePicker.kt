@@ -4,7 +4,8 @@ import androidx.compose.runtime.Composable
 
 enum class FilePickerMode {
     IMAGE,
-    DOCUMENT
+    DOCUMENT,
+    MEDIA
 }
 
 @Composable

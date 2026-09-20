@@ -11,10 +11,14 @@ import com.mobileflasher.app.model.Layer
 import com.mobileflasher.app.model.Project
 import com.mobileflasher.app.model.Tool
 import com.mobileflasher.app.model.VectorShape
+import com.mobileflasher.app.media.ImportedAnimation
+import com.mobileflasher.app.media.decodeAnimation
 import com.mobileflasher.app.platform.decodePngToImageBitmap
 import com.mobileflasher.app.svg.importSvg
 import com.mobileflasher.app.xml.parseProjectXml
 import com.mobileflasher.app.xml.writeProjectXml
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -115,6 +119,118 @@ class EditorController {
 
     fun toggleGrid() {
         _state.update { it.copy(gridVisible = !it.gridVisible) }
+    }
+
+    fun toggleSnapToGrid() {
+        _state.update { it.copy(snapToGrid = !it.snapToGrid) }
+    }
+
+    fun eraseShape(shapeId: String) {
+        val current = _state.value
+        if (current.currentLayer?.isLocked == true) return
+        _state.update { state ->
+            state.withCurrentFrame { frame -> frame.copy(shapes = frame.shapes.filterNot { it.id == shapeId }) }
+                .let { if (it.selectedShapeId == shapeId) it.copy(selectedShapeId = null) else it }
+        }
+    }
+
+    fun pickStyleFrom(shapeId: String) {
+        val shape = _state.value.currentLayer?.frames?.getOrNull(_state.value.currentFrameIndex)
+            ?.shapes?.firstOrNull { it.id == shapeId } ?: return
+        if (shape is ImageShape) return
+        _state.update { it.copy(strokeColor = shape.strokeColor, fillColor = shape.fillColor, strokeWidth = shape.strokeWidth.coerceIn(1f, 32f)) }
+        setStatusMessage("Style picked")
+    }
+
+    fun duplicateFrame() {
+        val current = _state.value
+        val layer = current.currentLayer ?: return
+        val source = layer.frames.getOrNull(current.currentFrameIndex) ?: return
+        recordHistory()
+        _state.update { state ->
+            val updated = state.withLayer(state.currentLayerIndex) { target ->
+                val frames = target.frames.toMutableList()
+                frames.add(state.currentFrameIndex + 1, source.copy(isKeyframe = true))
+                target.copy(frames = frames.mapIndexed { i, frame -> frame.copy(index = i) })
+            }
+            updated.copy(currentFrameIndex = state.currentFrameIndex + 1, selectedShapeId = null)
+        }
+    }
+
+    suspend fun <T> busy(message: String, block: suspend () -> T): T {
+        _state.update { it.copy(busyMessage = message) }
+        try {
+            return block()
+        } finally {
+            _state.update { it.copy(busyMessage = null) }
+        }
+    }
+
+    suspend fun importAnimation(bytes: ByteArray) {
+        val animation = busy("Importing animation") {
+            withContext(Dispatchers.Default) {
+                try {
+                    decodeAnimation(bytes) ?: return@withContext null
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        }
+        if (animation == null) {
+            setStatusMessage("Could not read that animation on this device")
+            return
+        }
+        addAnimationLayer(animation)
+    }
+
+    private fun addAnimationLayer(animation: ImportedAnimation) {
+        val current = _state.value
+        val canvasWidth = current.canvasSize.width.toFloat()
+        val canvasHeight = current.canvasSize.height.toFloat()
+        val first = animation.frames.first().image
+        val frameWidth = first.width.toFloat()
+        val frameHeight = first.height.toFloat()
+        val fit = if (canvasWidth > 0f && canvasHeight > 0f) {
+            minOf(canvasWidth / frameWidth, canvasHeight / frameHeight)
+        } else {
+            1f
+        }
+        val width = frameWidth * fit
+        val height = frameHeight * fit
+        val topLeft = Offset(
+            if (canvasWidth > 0f) (canvasWidth - width) / 2f else 0f,
+            if (canvasHeight > 0f) (canvasHeight - height) / 2f else 0f
+        )
+        val frames = animation.frames.mapIndexed { index, imported ->
+            Frame(
+                index = index,
+                isKeyframe = true,
+                shapes = listOf(
+                    ImageShape(
+                        id = nextShapeId(),
+                        topLeft = topLeft,
+                        size = Size(width, height),
+                        image = imported.image,
+                        sourcePng = imported.png
+                    )
+                )
+            )
+        }
+        recordHistory()
+        _state.update { state ->
+            val isBlank = state.project.layers.all { layer -> layer.frames.all { it.shapes.isEmpty() } }
+            val layer = Layer(id = "layer-${layerIdCounter++}", name = "Animation ${state.project.layers.size + 1}", frames = frames)
+            state.copy(
+                project = state.project.copy(
+                    layers = state.project.layers + layer,
+                    frameRate = if (isBlank) animation.frameRate.coerceIn(1, 60) else state.project.frameRate
+                ),
+                currentLayerIndex = state.project.layers.size,
+                currentFrameIndex = 0,
+                selectedShapeId = null
+            )
+        }
+        setStatusMessage("Imported ${frames.size} frames")
     }
 
     fun setProjectName(name: String) {
@@ -368,13 +484,21 @@ class EditorController {
         loadProject(project)
     }
 
-    fun loadProject(project: Project) {
+    fun loadProject(
+        project: Project,
+        gridVisible: Boolean = false,
+        snapToGrid: Boolean = false,
+        onionSkinEnabled: Boolean = true
+    ) {
         undoStack.clear()
         redoStack.clear()
         _state.update {
             EditorUiState(
                 project = project,
-                canvasSize = it.canvasSize
+                canvasSize = it.canvasSize,
+                gridVisible = gridVisible,
+                snapToGrid = snapToGrid,
+                onionSkinEnabled = onionSkinEnabled
             )
         }
     }

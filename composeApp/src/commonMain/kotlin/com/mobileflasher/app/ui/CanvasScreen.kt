@@ -13,6 +13,12 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +36,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -43,6 +55,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
@@ -53,6 +66,7 @@ import com.mobileflasher.app.model.LineShape
 import com.mobileflasher.app.model.RectangleShape
 import com.mobileflasher.app.model.Tool
 import com.mobileflasher.app.model.VectorShape
+import com.mobileflasher.app.model.hitTest
 import com.mobileflasher.app.render.drawShape
 import com.mobileflasher.app.render.pointsToPath
 import com.mobileflasher.app.state.EditorUiState
@@ -66,6 +80,20 @@ import kotlin.math.roundToInt
 private const val GridSpacing = 32f
 private const val MinShapeSide = 12f
 private const val MinPenSpacing = 2f
+private const val EraserRadius = 18f
+private const val SelectSlop = 8f
+private const val MinZoom = 0.5f
+private const val MaxZoom = 6f
+private val ShapeTools = setOf(Tool.RECTANGLE, Tool.ELLIPSE, Tool.LINE, Tool.PEN)
+private val SnapTools = setOf(Tool.RECTANGLE, Tool.ELLIPSE, Tool.LINE)
+
+private fun snapPoint(point: Offset, state: EditorUiState): Offset {
+    if (!state.snapToGrid || state.selectedTool !in SnapTools) return point
+    return Offset(
+        (point.x / GridSpacing).roundToInt() * GridSpacing,
+        (point.y / GridSpacing).roundToInt() * GridSpacing
+    )
+}
 private val PencilWood = Color(0xFFF3D5A5)
 private val PencilBody = Color(0xFFFFC21A)
 private val PencilBodyShade = Color(0xFFE59F00)
@@ -100,10 +128,17 @@ fun CanvasScreen(
     onShapeSelected: (String?) -> Unit,
     onShapeMoved: (String, Offset) -> Unit,
     onShapeResized: (String, Rect) -> Unit,
+    onShapeErased: (String) -> Unit,
+    onStylePicked: (String) -> Unit,
     onBeginMoveGesture: () -> Unit,
     onCanvasSizeChanged: (IntSize) -> Unit,
     nextShapeId: () -> String
 ) {
+    var viewScale by remember { mutableStateOf(1f) }
+    var viewOffset by remember { mutableStateOf(Offset.Zero) }
+    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
+    var erasedInGesture by remember { mutableStateOf(false) }
+    val latestScale by rememberUpdatedState(viewScale)
     var dragStart by remember { mutableStateOf<Offset?>(null) }
     var currentPoint by remember { mutableStateOf<Offset?>(null) }
     var penPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
@@ -136,44 +171,104 @@ fun CanvasScreen(
         penPoints = emptyList()
         draggingShapeId = null
         resizeCorner = null
+        erasedInGesture = false
+    }
+
+    fun eraseAt(point: Offset, state: EditorUiState) {
+        val frame = state.currentLayer?.frames?.getOrNull(state.currentFrameIndex)
+        val hit = frame?.shapes?.lastOrNull { it.hitTest(point, EraserRadius / latestScale) } ?: return
+        if (state.currentLayer?.isLocked == true) return
+        if (!erasedInGesture) {
+            erasedInGesture = true
+            onBeginMoveGesture()
+        }
+        onShapeErased(hit.id)
     }
 
     Box(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            .clipToBounds()
+            .onSizeChanged { viewportSize = it }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    do {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        if (event.changes.count { it.pressed } >= 2) {
+                            val zoom = event.calculateZoom()
+                            val pan = event.calculatePan()
+                            val centroid = event.calculateCentroid(useCurrent = true)
+                            val center = Offset(viewportSize.width / 2f, viewportSize.height / 2f)
+                            val nextScale = (viewScale * zoom).coerceIn(MinZoom, MaxZoom)
+                            val ratio = nextScale / viewScale
+                            val anchor = centroid - center
+                            viewOffset = anchor - (anchor - viewOffset) * ratio + pan
+                            viewScale = nextScale
+                            event.changes.forEach { if (it.positionChanged()) it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
+                }
+            }
     ) {
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .padding(10.dp)
+                .graphicsLayer {
+                    scaleX = viewScale
+                    scaleY = viewScale
+                    translationX = viewOffset.x
+                    translationY = viewOffset.y
+                }
                 .onSizeChanged(onCanvasSizeChanged)
+                .shadow(6.dp, RoundedCornerShape(4.dp))
                 .background(StageColor, RoundedCornerShape(4.dp))
                 .pointerInput(uiState.selectedTool, uiState.currentLayerIndex, uiState.currentFrameIndex) {
-                    if (uiState.selectedTool == Tool.SELECT) {
+                    val tool = uiState.selectedTool
+                    if (tool == Tool.SELECT || tool == Tool.ERASER || tool == Tool.EYEDROPPER) {
                         detectTapGestures { offset ->
                             val state = latestState
                             val frame = state.currentLayer?.frames?.getOrNull(state.currentFrameIndex)
                             val locked = state.currentLayer?.isLocked == true
-                            val hit = if (locked) null else frame?.shapes?.lastOrNull { it.bounds().inflate(8f).contains(offset) }
-                            onShapeSelected(hit?.id)
+                            when (tool) {
+                                Tool.SELECT -> {
+                                    val hit = if (locked) null else frame?.shapes?.lastOrNull { it.hitTest(offset, SelectSlop / latestScale) }
+                                    onShapeSelected(hit?.id)
+                                }
+                                Tool.ERASER -> {
+                                    erasedInGesture = false
+                                    eraseAt(offset, state)
+                                    erasedInGesture = false
+                                }
+                                else -> {
+                                    val hit = frame?.shapes?.lastOrNull { it.hitTest(offset, SelectSlop / latestScale) }
+                                    if (hit != null) onStylePicked(hit.id)
+                                }
+                            }
                         }
                     }
                 }
                 .pointerInput(uiState.selectedTool, uiState.currentLayerIndex, uiState.currentFrameIndex) {
                     val handleRadius = 26.dp.toPx()
                     detectDragGestures(
-                        onDragStart = { offset ->
+                        onDragStart = { rawOffset ->
+                            val state = latestState
+                            val offset = snapPoint(rawOffset, state)
                             dragStart = offset
                             currentPoint = offset
-                            val state = latestState
                             when (state.selectedTool) {
+                                Tool.ERASER -> {
+                                    cursorPoint = offset
+                                    eraseAt(offset, state)
+                                }
                                 Tool.SELECT -> {
                                     val layerLocked = state.currentLayer?.isLocked == true
                                     val frame = state.currentLayer?.frames?.getOrNull(state.currentFrameIndex)
                                     val active = state.selectedShape
                                     val corner = active?.let { shape ->
                                         val bounds = shape.bounds()
-                                        Corner.entries.firstOrNull { (bounds.cornerPoint(it) - offset).getDistance() <= handleRadius }
+                                        Corner.entries.firstOrNull { (bounds.cornerPoint(it) - offset).getDistance() <= handleRadius / latestScale }
                                     }
                                     if (layerLocked) {
                                         draggingShapeId = null
@@ -183,7 +278,7 @@ fun CanvasScreen(
                                         draggingShapeId = active.id
                                         onBeginMoveGesture()
                                     } else {
-                                        val hit = frame?.shapes?.lastOrNull { it.bounds().inflate(8f).contains(offset) }
+                                        val hit = frame?.shapes?.lastOrNull { it.hitTest(offset, SelectSlop / latestScale) }
                                         draggingShapeId = hit?.id
                                         onShapeSelected(hit?.id)
                                         if (hit != null) onBeginMoveGesture()
@@ -198,10 +293,11 @@ fun CanvasScreen(
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()
-                            currentPoint = change.position
-                            cursorPoint = change.position
                             val state = latestState
+                            currentPoint = snapPoint(change.position, state)
+                            cursorPoint = change.position
                             when (state.selectedTool) {
+                                Tool.ERASER -> eraseAt(change.position, state)
                                 Tool.SELECT -> {
                                     val id = draggingShapeId
                                     if (id != null) {
@@ -236,7 +332,7 @@ fun CanvasScreen(
                             val start = dragStart
                             val end = currentPoint
                             val state = latestState
-                            if (start != null && end != null && state.selectedTool != Tool.SELECT) {
+                            if (start != null && end != null && state.selectedTool in ShapeTools) {
                                 val shape = buildShape(state.selectedTool, start, end, penPoints, state, nextShapeId)
                                 if (shape != null) onShapeCreated(shape)
                             }
@@ -265,16 +361,33 @@ fun CanvasScreen(
 
                 val start = dragStart
                 val end = currentPoint
-                if (start != null && end != null && uiState.selectedTool != Tool.SELECT) {
+                if (start != null && end != null && uiState.selectedTool in ShapeTools) {
                     drawPreview(uiState.selectedTool, start, end, penPoints, uiState)
                 }
 
+                if (uiState.snapToGrid && start != null && end != null && uiState.selectedTool in SnapTools) {
+                    val inverse = 1f / viewScale
+                    drawCircle(BoltAmber, radius = 5.dp.toPx() * inverse, center = end)
+                    drawCircle(Color.White, radius = 2.dp.toPx() * inverse, center = end)
+                }
+
                 if (selected != null && currentFrame != null) {
-                    drawSelection(selected.bounds(), isLocked, dashPhase.value)
+                    drawSelection(selected.bounds(), isLocked, dashPhase.value, 1f / viewScale)
+                }
+
+                if (uiState.selectedTool == Tool.ERASER && start != null) {
+                    drawCircle(
+                        color = Color(0xFFE53935),
+                        radius = EraserRadius / viewScale,
+                        center = cursorPoint,
+                        style = Stroke(width = 1.5.dp.toPx() / viewScale)
+                    )
                 }
 
                 if (pencilAlpha > 0f) {
-                    drawPencilCursor(cursorPoint, uiState.strokeColor, pencilAlpha)
+                    scale(1f / viewScale, pivot = cursorPoint) {
+                        drawPencilCursor(cursorPoint, uiState.strokeColor, pencilAlpha)
+                    }
                 }
             }
         }
@@ -292,6 +405,17 @@ fun CanvasScreen(
             CanvasBadge(uiState.selectedTool.label())
             CanvasBadge("Frame ${uiState.currentFrameIndex + 1}")
             if (isLocked) CanvasBadge("Locked")
+            if (viewScale != 1f || viewOffset != Offset.Zero) {
+                CanvasBadge(
+                    text = "${(viewScale * 100f).roundToInt()}%  Fit",
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable {
+                            viewScale = 1f
+                            viewOffset = Offset.Zero
+                        }
+                )
+            }
             AnimatedVisibility(
                 visible = measure != null,
                 enter = fadeIn(tween(120)) + scaleIn(initialScale = 0.85f),
@@ -304,12 +428,12 @@ fun CanvasScreen(
 }
 
 @Composable
-private fun CanvasBadge(text: String, accent: Boolean = false) {
+private fun CanvasBadge(text: String, modifier: Modifier = Modifier, accent: Boolean = false) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
         color = if (accent) BoltInk else Color.White,
-        modifier = Modifier
+        modifier = modifier
             .background(if (accent) BoltAmber else Color(0xB3121620), RoundedCornerShape(50))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     )
@@ -317,6 +441,8 @@ private fun CanvasBadge(text: String, accent: Boolean = false) {
 
 private fun Tool.label(): String = when (this) {
     Tool.SELECT -> "Select"
+    Tool.ERASER -> "Eraser"
+    Tool.EYEDROPPER -> "Eyedropper"
     Tool.RECTANGLE -> "Rectangle"
     Tool.ELLIPSE -> "Ellipse"
     Tool.LINE -> "Line"
@@ -415,7 +541,7 @@ private fun DrawScope.drawGrid() {
     }
 }
 
-private fun DrawScope.drawSelection(bounds: Rect, isLocked: Boolean, dashPhase: Float) {
+private fun DrawScope.drawSelection(bounds: Rect, isLocked: Boolean, dashPhase: Float, uiScale: Float) {
     val accent = if (isLocked) Color(0xFF9199AD) else Color(0xFF2F63E0)
     drawRect(
         color = accent.copy(alpha = 0.08f),
@@ -427,16 +553,16 @@ private fun DrawScope.drawSelection(bounds: Rect, isLocked: Boolean, dashPhase: 
         topLeft = bounds.topLeft,
         size = Size(bounds.width, bounds.height),
         style = Stroke(
-            width = 1.5.dp.toPx(),
+            width = 1.5.dp.toPx() * uiScale,
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 9f), if (isLocked) 0f else dashPhase)
         )
     )
     if (isLocked) return
-    val radius = 7.dp.toPx()
+    val radius = 7.dp.toPx() * uiScale
     Corner.entries.forEach { corner ->
         val center = bounds.cornerPoint(corner)
         drawCircle(Color.White, radius = radius, center = center, style = Fill)
-        drawCircle(accent, radius = radius, center = center, style = Stroke(width = 2.dp.toPx()))
+        drawCircle(accent, radius = radius, center = center, style = Stroke(width = 2.dp.toPx() * uiScale))
     }
 }
 
@@ -463,7 +589,7 @@ private fun buildShape(
         Tool.PEN -> if (penPoints.size > 1) {
             FreehandShape(nextShapeId(), penPoints, uiState.strokeColor, uiState.strokeWidth)
         } else null
-        Tool.SELECT -> null
+        else -> null
     }
 }
 
@@ -494,6 +620,6 @@ private fun DrawScope.drawPreview(
                 style = Stroke(width = uiState.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
         }
-        Tool.SELECT -> Unit
+        else -> Unit
     }
 }

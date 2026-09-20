@@ -158,3 +158,22 @@ data class ImageShape(
         return result
     }
 }
+
+private fun distanceToSegment(point: Offset, a: Offset, b: Offset): Float {
+    val dx = b.x - a.x
+    val dy = b.y - a.y
+    val lengthSquared = dx * dx + dy * dy
+    if (lengthSquared == 0f) return (point - a).getDistance()
+    val t = (((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared).coerceIn(0f, 1f)
+    return (point - Offset(a.x + t * dx, a.y + t * dy)).getDistance()
+}
+
+fun VectorShape.hitTest(point: Offset, tolerance: Float): Boolean = when (this) {
+    is LineShape -> distanceToSegment(point, start, end) <= tolerance + strokeWidth / 2f
+    is FreehandShape -> when (points.size) {
+        0 -> false
+        1 -> (points[0] - point).getDistance() <= tolerance + strokeWidth / 2f
+        else -> points.zipWithNext().any { (a, b) -> distanceToSegment(point, a, b) <= tolerance + strokeWidth / 2f }
+    }
+    else -> bounds().inflate(tolerance).contains(point)
+}

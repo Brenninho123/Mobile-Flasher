@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LayersClear
@@ -66,6 +67,7 @@ fun TimelinePanel(
     onCellSelected: (Int, Int) -> Unit,
     onAddFrame: () -> Unit,
     onAddKeyframe: () -> Unit,
+    onDuplicateFrame: () -> Unit,
     onDeleteFrame: () -> Unit,
     onTogglePlay: () -> Unit,
     onAddLayer: () -> Unit,
@@ -104,6 +106,7 @@ fun TimelinePanel(
             onTogglePlay = onTogglePlay,
             onAddFrame = onAddFrame,
             onAddKeyframe = onAddKeyframe,
+            onDuplicateFrame = onDuplicateFrame,
             onDeleteFrame = onDeleteFrame,
             onAddLayer = onAddLayer,
             onDeleteLayer = { onDeleteLayer(uiState.currentLayerIndex) },
@@ -158,6 +161,7 @@ private fun TimelineToolbar(
     onTogglePlay: () -> Unit,
     onAddFrame: () -> Unit,
     onAddKeyframe: () -> Unit,
+    onDuplicateFrame: () -> Unit,
     onDeleteFrame: () -> Unit,
     onAddLayer: () -> Unit,
     onDeleteLayer: () -> Unit,
@@ -201,6 +205,7 @@ private fun TimelineToolbar(
         SectionDivider()
         PanelIconButton(Icons.Filled.Add, "Add frame", onAddFrame)
         PanelIconButton(Icons.Filled.Star, "Add keyframe", onAddKeyframe, tint = scheme.secondary)
+        PanelIconButton(Icons.Filled.CopyAll, "Duplicate frame", onDuplicateFrame)
         PanelIconButton(
             Icons.Filled.DeleteSweep,
             "Delete frame",

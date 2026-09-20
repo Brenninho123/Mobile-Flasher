@@ -63,14 +63,29 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+    signingConfigs {
+        create("shared") {
+            storeFile = file("mobileflasher.jks")
+            storePassword = "mobileflasher"
+            keyAlias = "mobileflasher"
+            keyPassword = "mobileflasher"
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+        }
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
     buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("shared")
+        }
         getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("shared")
         }
     }
     compileOptions {
