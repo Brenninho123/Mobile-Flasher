@@ -1,5 +1,16 @@
 package com.mobileflasher.app.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -19,14 +30,19 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
@@ -45,9 +61,17 @@ import com.mobileflasher.app.state.selectedShape
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 private const val GridSpacing = 32f
 private const val MinShapeSide = 12f
+private const val MinPenSpacing = 2f
+private val PencilWood = Color(0xFFF3D5A5)
+private val PencilBody = Color(0xFFFFC21A)
+private val PencilBodyShade = Color(0xFFE59F00)
+private val PencilFerrule = Color(0xFFB4BBC8)
+private val PencilEraser = Color(0xFFF07C93)
+private val PencilOutline = Color(0xCC1B1F2A)
 private val StageColor = Color.White
 private val GridColor = Color(0x1F1E66F5)
 private val GridMajorColor = Color(0x381E66F5)
@@ -86,6 +110,19 @@ fun CanvasScreen(
     var draggingShapeId by remember { mutableStateOf<String?>(null) }
     var resizeCorner by remember { mutableStateOf<Corner?>(null) }
     var resizeAnchor by remember { mutableStateOf(Offset.Zero) }
+    var cursorPoint by remember { mutableStateOf(Offset.Zero) }
+
+    val marchTransition = rememberInfiniteTransition()
+    val dashPhase = marchTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 23f,
+        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing))
+    )
+    val pencilActive = uiState.selectedTool == Tool.PEN && dragStart != null
+    val pencilAlpha by animateFloatAsState(
+        targetValue = if (pencilActive) 1f else 0f,
+        animationSpec = tween(160)
+    )
 
     val latestState by rememberUpdatedState(uiState)
     val currentLayer = uiState.currentLayer
@@ -152,13 +189,17 @@ fun CanvasScreen(
                                         if (hit != null) onBeginMoveGesture()
                                     }
                                 }
-                                Tool.PEN -> penPoints = listOf(offset)
+                                Tool.PEN -> {
+                                    penPoints = listOf(offset)
+                                    cursorPoint = offset
+                                }
                                 else -> Unit
                             }
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()
                             currentPoint = change.position
+                            cursorPoint = change.position
                             val state = latestState
                             when (state.selectedTool) {
                                 Tool.SELECT -> {
@@ -182,7 +223,12 @@ fun CanvasScreen(
                                         }
                                     }
                                 }
-                                Tool.PEN -> penPoints = penPoints + change.position
+                                Tool.PEN -> {
+                                    val last = penPoints.lastOrNull()
+                                    if (last == null || (change.position - last).getDistance() >= MinPenSpacing) {
+                                        penPoints = penPoints + change.position
+                                    }
+                                }
                                 else -> Unit
                             }
                         },
@@ -224,9 +270,17 @@ fun CanvasScreen(
                 }
 
                 if (selected != null && currentFrame != null) {
-                    drawSelection(selected.bounds(), isLocked)
+                    drawSelection(selected.bounds(), isLocked, dashPhase.value)
+                }
+
+                if (pencilAlpha > 0f) {
+                    drawPencilCursor(cursorPoint, uiState.strokeColor, pencilAlpha)
                 }
             }
+        }
+
+        val measure = dragStart?.let { start ->
+            currentPoint?.let { end -> measureLabel(uiState.selectedTool, start, end) }
         }
 
         Row(
@@ -238,18 +292,25 @@ fun CanvasScreen(
             CanvasBadge(uiState.selectedTool.label())
             CanvasBadge("Frame ${uiState.currentFrameIndex + 1}")
             if (isLocked) CanvasBadge("Locked")
+            AnimatedVisibility(
+                visible = measure != null,
+                enter = fadeIn(tween(120)) + scaleIn(initialScale = 0.85f),
+                exit = fadeOut(tween(120)) + scaleOut(targetScale = 0.85f)
+            ) {
+                CanvasBadge(measure ?: "", accent = true)
+            }
         }
     }
 }
 
 @Composable
-private fun CanvasBadge(text: String) {
+private fun CanvasBadge(text: String, accent: Boolean = false) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
-        color = Color.White,
+        color = if (accent) BoltInk else Color.White,
         modifier = Modifier
-            .background(Color(0xB3121620), RoundedCornerShape(50))
+            .background(if (accent) BoltAmber else Color(0xB3121620), RoundedCornerShape(50))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     )
 }
@@ -259,7 +320,72 @@ private fun Tool.label(): String = when (this) {
     Tool.RECTANGLE -> "Rectangle"
     Tool.ELLIPSE -> "Ellipse"
     Tool.LINE -> "Line"
-    Tool.PEN -> "Pen"
+    Tool.PEN -> "Pencil"
+}
+
+private fun measureLabel(tool: Tool, start: Offset, end: Offset): String? = when (tool) {
+    Tool.RECTANGLE, Tool.ELLIPSE -> "${abs(end.x - start.x).roundToInt()} x ${abs(end.y - start.y).roundToInt()}"
+    Tool.LINE -> "${(end - start).getDistance().roundToInt()} px"
+    else -> null
+}
+
+internal fun DrawScope.drawPencilCursor(tip: Offset, leadColor: Color, alpha: Float) {
+    val width = 14.dp.toPx()
+    val half = width / 2f
+    val cone = 18.dp.toPx()
+    val body = 40.dp.toPx()
+    val ferrule = 7.dp.toPx()
+    val eraser = 10.dp.toPx()
+    val length = cone + body + ferrule + eraser
+    rotate(degrees = 32f, pivot = tip) {
+        val bodyTop = tip.y - cone - body
+        val ferruleTop = bodyTop - ferrule
+        val eraserTop = ferruleTop - eraser
+
+        drawPath(
+            path = Path().apply {
+                moveTo(tip.x, tip.y)
+                lineTo(tip.x - half, tip.y - cone)
+                lineTo(tip.x + half, tip.y - cone)
+                close()
+            },
+            color = PencilWood,
+            alpha = alpha
+        )
+        drawPath(
+            path = Path().apply {
+                moveTo(tip.x, tip.y)
+                lineTo(tip.x - half * 0.34f, tip.y - cone * 0.34f)
+                lineTo(tip.x + half * 0.34f, tip.y - cone * 0.34f)
+                close()
+            },
+            color = leadColor,
+            alpha = alpha
+        )
+        drawRect(PencilBody, Offset(tip.x - half, bodyTop), Size(width, body), alpha = alpha)
+        drawRect(PencilBodyShade, Offset(tip.x + half * 0.2f, bodyTop), Size(half * 0.8f, body), alpha = alpha)
+        drawRect(PencilFerrule, Offset(tip.x - half, ferruleTop), Size(width, ferrule), alpha = alpha)
+        drawRoundRect(
+            color = PencilEraser,
+            topLeft = Offset(tip.x - half, eraserTop),
+            size = Size(width, eraser),
+            cornerRadius = CornerRadius(4.dp.toPx()),
+            alpha = alpha
+        )
+        drawPath(
+            path = Path().apply {
+                moveTo(tip.x, tip.y)
+                lineTo(tip.x - half, tip.y - cone)
+                lineTo(tip.x - half, tip.y - length)
+                lineTo(tip.x + half, tip.y - length)
+                lineTo(tip.x + half, tip.y - cone)
+                close()
+            },
+            color = PencilOutline,
+            alpha = alpha,
+            style = Stroke(width = 1.2.dp.toPx(), join = StrokeJoin.Round)
+        )
+    }
 }
 
 private fun DrawScope.drawGrid() {
@@ -289,13 +415,21 @@ private fun DrawScope.drawGrid() {
     }
 }
 
-private fun DrawScope.drawSelection(bounds: Rect, isLocked: Boolean) {
+private fun DrawScope.drawSelection(bounds: Rect, isLocked: Boolean, dashPhase: Float) {
     val accent = if (isLocked) Color(0xFF9199AD) else Color(0xFF2F63E0)
+    drawRect(
+        color = accent.copy(alpha = 0.08f),
+        topLeft = bounds.topLeft,
+        size = Size(bounds.width, bounds.height)
+    )
     drawRect(
         color = accent,
         topLeft = bounds.topLeft,
         size = Size(bounds.width, bounds.height),
-        style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 9f)))
+        style = Stroke(
+            width = 1.5.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 9f), if (isLocked) 0f else dashPhase)
+        )
     )
     if (isLocked) return
     val radius = 7.dp.toPx()
@@ -353,7 +487,13 @@ private fun DrawScope.drawPreview(
             drawOval(color = uiState.strokeColor, topLeft = topLeft, size = size, style = Stroke(width = uiState.strokeWidth))
         }
         Tool.LINE -> drawLine(color = uiState.strokeColor, start = start, end = end, strokeWidth = uiState.strokeWidth)
-        Tool.PEN -> if (penPoints.size > 1) drawPath(pointsToPath(penPoints), uiState.strokeColor, style = Stroke(width = uiState.strokeWidth))
+        Tool.PEN -> if (penPoints.size > 1) {
+            drawPath(
+                pointsToPath(penPoints),
+                uiState.strokeColor,
+                style = Stroke(width = uiState.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+        }
         Tool.SELECT -> Unit
     }
 }

@@ -1,5 +1,10 @@
 package com.mobileflasher.app.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -40,6 +45,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -71,11 +77,19 @@ fun PanelIconButton(
     tint: Color? = null
 ) {
     val scheme = MaterialTheme.colorScheme
-    val container = if (selected) scheme.primaryContainer else Color.Transparent
+    val container by animateColorAsState(
+        targetValue = if (selected) scheme.primaryContainer else Color.Transparent,
+        animationSpec = tween(180)
+    )
     val content = tint ?: if (selected) scheme.onPrimaryContainer else scheme.onSurface
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.08f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+    )
     Box(
         modifier = modifier
             .size(40.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(MaterialTheme.shapes.small)
             .background(container)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),

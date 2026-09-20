@@ -36,7 +36,7 @@ private val ToolEntries = listOf(
     ToolEntry(Tool.RECTANGLE, Icons.Filled.CropSquare, "Rectangle"),
     ToolEntry(Tool.ELLIPSE, Icons.Filled.Circle, "Ellipse"),
     ToolEntry(Tool.LINE, Icons.Filled.Remove, "Line"),
-    ToolEntry(Tool.PEN, Icons.Filled.Edit, "Pen")
+    ToolEntry(Tool.PEN, Icons.Filled.Edit, "Pencil")
 )
 
 @Composable

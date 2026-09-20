@@ -2,6 +2,8 @@ package com.mobileflasher.app.render
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -27,7 +29,12 @@ fun DrawScope.drawShape(shape: VectorShape, alpha: Float = 1f) {
         }
         is LineShape -> drawLine(color = shape.strokeColor, start = shape.start, end = shape.end, strokeWidth = shape.strokeWidth, alpha = alpha)
         is FreehandShape -> if (shape.points.size > 1) {
-            drawPath(pointsToPath(shape.points), shape.strokeColor, alpha = alpha, style = Stroke(width = shape.strokeWidth))
+            drawPath(
+                pointsToPath(shape.points),
+                shape.strokeColor,
+                alpha = alpha,
+                style = Stroke(width = shape.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
         }
         is ImageShape -> drawImage(
             image = shape.image,
@@ -41,8 +48,16 @@ fun DrawScope.drawShape(shape: VectorShape, alpha: Float = 1f) {
 fun pointsToPath(points: List<Offset>): Path {
     val path = Path()
     path.moveTo(points.first().x, points.first().y)
-    for (point in points.drop(1)) {
-        path.lineTo(point.x, point.y)
+    if (points.size < 3) {
+        points.drop(1).forEach { path.lineTo(it.x, it.y) }
+        return path
     }
+    for (index in 1 until points.size - 1) {
+        val current = points[index]
+        val next = points[index + 1]
+        path.quadraticTo(current.x, current.y, (current.x + next.x) / 2f, (current.y + next.y) / 2f)
+    }
+    val last = points.last()
+    path.lineTo(last.x, last.y)
     return path
 }
