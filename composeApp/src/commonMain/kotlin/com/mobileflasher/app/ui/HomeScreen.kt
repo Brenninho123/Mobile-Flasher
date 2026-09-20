@@ -23,11 +23,13 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -36,7 +38,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.FolderOpen
@@ -74,7 +75,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.mobileflasher.app.i18n.StringKey
+import com.mobileflasher.app.i18n.tr
 import com.mobileflasher.app.library.LibraryEntry
+import com.mobileflasher.app.model.ProjectMode
 import com.mobileflasher.app.settings.AppSettings
 import kotlin.math.PI
 import kotlin.math.cos
@@ -90,7 +94,7 @@ fun HomeScreen(
     settings: AppSettings,
     onSettingsChange: ((AppSettings) -> AppSettings) -> Unit,
     onSettingsReset: () -> Unit,
-    onNewProject: (String, Int) -> Unit,
+    onNewProject: (String, Int, ProjectMode) -> Unit,
     onOpenProject: () -> Unit,
     entries: List<LibraryEntry>,
     nowMillis: Long,
@@ -99,7 +103,7 @@ fun HomeScreen(
     onShareEntry: (LibraryEntry) -> Unit,
     onDeleteEntry: (LibraryEntry) -> Unit
 ) {
-    var showNewProject by remember { mutableStateOf(false) }
+    var newProjectMode by remember { mutableStateOf<ProjectMode?>(null) }
     var showSettings by remember { mutableStateOf(false) }
     val animate = !settings.reduceMotion
     var entered by remember { mutableStateOf(!animate) }
@@ -181,7 +185,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(6.dp))
             Reveal(entered, 200, animate) {
                 Text(
-                    text = "Vector drawing and frame animation, built for your phone",
+                    text = tr(StringKey.HomeTagline),
                     style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -193,12 +197,34 @@ fun HomeScreen(
             }
             Spacer(modifier = Modifier.height(24.dp))
             Reveal(entered, 420, animate) {
-                PressableButton(
-                    onClick = { showNewProject = true },
-                    outlined = false,
-                    icon = Icons.AutoMirrored.Filled.NoteAdd,
-                    label = "New project"
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = tr(StringKey.NewProject),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ModeCard(
+                            icon = Icons.Filled.Brush,
+                            title = tr(StringKey.ModeArt),
+                            hint = tr(StringKey.ModeArtHint),
+                            accent = BoltPink,
+                            onClick = { newProjectMode = ProjectMode.ART },
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        )
+                        ModeCard(
+                            icon = Icons.Filled.Movie,
+                            title = tr(StringKey.ModeAnimation),
+                            hint = tr(StringKey.ModeAnimationHint),
+                            accent = BoltAmber,
+                            onClick = { newProjectMode = ProjectMode.ANIMATION },
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        )
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Reveal(entered, 500, animate) {
@@ -206,7 +232,7 @@ fun HomeScreen(
                     onClick = onOpenProject,
                     outlined = true,
                     icon = Icons.Filled.FolderOpen,
-                    label = "Open .mflash file"
+                    label = tr(StringKey.OpenProjectFile)
                 )
             }
             Spacer(modifier = Modifier.height(28.dp))
@@ -230,9 +256,9 @@ fun HomeScreen(
                         .padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    FeatureRow(Icons.Filled.Brush, "Vector tools", "Shapes, lines and a smooth pencil with live styling")
-                    FeatureRow(Icons.Filled.Layers, "Layers and timeline", "Keyframes, onion skin and playback")
-                    FeatureRow(Icons.Filled.Movie, "Export anywhere", "PNG frames, animated GIF and project files")
+                    FeatureRow(Icons.Filled.Brush, tr(StringKey.FeatureVectorTitle), tr(StringKey.FeatureVectorBody))
+                    FeatureRow(Icons.Filled.Layers, tr(StringKey.FeatureLayersTitle), tr(StringKey.FeatureLayersBody))
+                    FeatureRow(Icons.Filled.Movie, tr(StringKey.FeatureExportTitle), tr(StringKey.FeatureExportBody))
                 }
             }
         }
@@ -255,16 +281,16 @@ fun HomeScreen(
         )
     }
 
-    if (showNewProject) {
+    newProjectMode?.let { mode ->
         ProjectDialog(
-            title = "New project",
-            initialName = "Untitled",
-            initialFrameRate = settings.defaultFrameRate,
-            confirmLabel = "Create",
-            onDismiss = { showNewProject = false },
+            title = tr(if (mode == ProjectMode.ART) StringKey.NewArt else StringKey.NewAnimation),
+            initialName = tr(StringKey.DefaultProjectName),
+            initialFrameRate = if (mode == ProjectMode.ANIMATION) settings.defaultFrameRate else null,
+            confirmLabel = tr(StringKey.Create),
+            onDismiss = { newProjectMode = null },
             onConfirm = { name, frameRate ->
-                showNewProject = false
-                onNewProject(name, frameRate)
+                newProjectMode = null
+                onNewProject(name, frameRate, mode)
             }
         )
     }
@@ -475,11 +501,54 @@ private fun SettingsGear(open: Boolean, animate: Boolean, onClick: () -> Unit, m
     ) {
         Icon(
             imageVector = Icons.Filled.Settings,
-            contentDescription = "Settings",
+            contentDescription = tr(StringKey.Settings),
             tint = scheme.onSurface,
             modifier = Modifier
                 .size(24.dp)
                 .graphicsLayer { rotationZ = rotation }
         )
+    }
+}
+
+@Composable
+private fun ModeCard(
+    icon: ImageVector,
+    title: String,
+    hint: String,
+    accent: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.96f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+    )
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(MaterialTheme.shapes.large)
+            .background(scheme.surfaceContainer)
+            .border(1.dp, scheme.outlineVariant, MaterialTheme.shapes.large)
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(accent.copy(alpha = 0.18f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = accent)
+        }
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(hint, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
     }
 }

@@ -38,6 +38,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mobileflasher.app.i18n.LocalLocalizer
+import com.mobileflasher.app.i18n.StringKey
+import com.mobileflasher.app.i18n.tr
 import com.mobileflasher.app.library.LibraryEntry
 import com.mobileflasher.app.library.formatRelativeTime
 import com.mobileflasher.app.platform.decodePngToImageBitmap
@@ -57,7 +60,7 @@ fun LibrarySection(
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Your projects",
+                text = tr(StringKey.YourProjects),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f)
             )
@@ -69,14 +72,14 @@ fun LibrarySection(
             )
             Spacer(Modifier.width(4.dp))
             Text(
-                text = "Offline on this device",
+                text = tr(StringKey.OfflineOnDevice),
                 style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant
             )
         }
         if (entries.isEmpty()) {
             Text(
-                text = "Projects you create are saved here automatically. Share them as .mflash files to open them anywhere.",
+                text = tr(StringKey.LibraryHint),
                 style = MaterialTheme.typography.bodySmall,
                 color = scheme.onSurfaceVariant
             )
@@ -97,15 +100,15 @@ fun LibrarySection(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             containerColor = scheme.surfaceContainerHigh,
-            title = { Text("Delete project?") },
-            text = { Text("\"${entry.name}\" will be removed from this device. Files you already shared are not affected.") },
+            title = { Text(tr(StringKey.DeleteProjectTitle)) },
+            text = { Text(tr(StringKey.DeleteProjectBody, entry.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     pendingDelete = null
                     onDelete(entry)
-                }) { Text("Delete", color = scheme.error) }
+                }) { Text(tr(StringKey.Delete), color = scheme.error) }
             },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(tr(StringKey.Cancel)) } }
         )
     }
 }
@@ -162,6 +165,8 @@ private fun ProjectCard(
                 Icon(Icons.Filled.Draw, contentDescription = null, tint = BoltAmber)
             }
         }
+        val frames = if (entry.frameCount == 1) tr(StringKey.FrameCountOne) else tr(StringKey.FrameCount, entry.frameCount)
+        val layers = if (entry.layerCount == 1) tr(StringKey.LayerCountOne) else tr(StringKey.LayerCount, entry.layerCount)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = entry.name,
@@ -170,25 +175,25 @@ private fun ProjectCard(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "${entry.frameCount} frames  |  ${entry.layerCount} layers",
+                text = "$frames  |  $layers",
                 style = MaterialTheme.typography.bodySmall,
                 color = scheme.onSurfaceVariant
             )
             Text(
-                text = formatRelativeTime(nowMillis, entry.modifiedMillis),
+                text = formatRelativeTime(LocalLocalizer.current, nowMillis, entry.modifiedMillis),
                 style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant
             )
         }
         Box {
-            PanelIconButton(Icons.Filled.MoreVert, "Project options", onClick = { menuOpen = true })
+            PanelIconButton(Icons.Filled.MoreVert, tr(StringKey.ProjectOptions), onClick = { menuOpen = true })
             DropdownMenu(
                 expanded = menuOpen,
                 onDismissRequest = { menuOpen = false },
                 containerColor = scheme.surfaceContainerHigh
             ) {
                 DropdownMenuItem(
-                    text = { Text("Share .mflash") },
+                    text = { Text(tr(StringKey.ShareMflash)) },
                     leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
                     onClick = {
                         menuOpen = false
@@ -196,7 +201,7 @@ private fun ProjectCard(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Delete", color = scheme.error) },
+                    text = { Text(tr(StringKey.Delete), color = scheme.error) },
                     leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = scheme.error) },
                     onClick = {
                         menuOpen = false

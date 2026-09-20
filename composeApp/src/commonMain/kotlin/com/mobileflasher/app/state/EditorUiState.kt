@@ -2,6 +2,7 @@ package com.mobileflasher.app.state
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntSize
+import com.mobileflasher.app.i18n.Message
 import com.mobileflasher.app.model.Project
 import com.mobileflasher.app.model.Tool
 
@@ -16,13 +17,13 @@ data class EditorUiState(
     val fillColor: Color? = Color(0xFF42A5F5),
     val strokeWidth: Float = 4f,
     val canvasSize: IntSize = IntSize.Zero,
-    val statusMessage: String? = null,
+    val statusMessage: Message? = null,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
     val onionSkinEnabled: Boolean = true,
     val gridVisible: Boolean = false,
     val snapToGrid: Boolean = false,
-    val busyMessage: String? = null
+    val busyMessage: Message? = null
 )
 
 val Project.frameCount: Int

@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.mobileflasher.app.i18n.StringKey
+import com.mobileflasher.app.i18n.tr
 import com.mobileflasher.app.state.EditorUiState
 import com.mobileflasher.app.state.selectedShape
 import kotlin.math.roundToInt
@@ -61,17 +63,17 @@ fun PropertiesBar(
         ) {
             ColorChip(
                 color = uiState.strokeColor,
-                label = "Stroke ${uiState.strokeColor.toHex()}",
+                label = tr(StringKey.StrokeLabel, uiState.strokeColor.toHex()),
                 onClick = { pickerTarget = ColorTarget.STROKE }
             )
             ColorChip(
                 color = uiState.fillColor,
-                label = "Fill ${uiState.fillColor?.toHex() ?: "None"}",
+                label = tr(StringKey.FillLabel, uiState.fillColor?.toHex() ?: tr(StringKey.NoneLabel)),
                 onClick = { pickerTarget = ColorTarget.FILL }
             )
             SectionDivider()
             Text(
-                text = "Width",
+                text = tr(StringKey.StrokeWidth),
                 style = MaterialTheme.typography.labelMedium,
                 color = scheme.onSurfaceVariant
             )
@@ -89,17 +91,17 @@ fun PropertiesBar(
             )
             if (hasSelection) {
                 SectionDivider()
-                PanelIconButton(Icons.Filled.ContentCopy, "Duplicate", onDuplicate)
-                PanelIconButton(Icons.Filled.FlipToFront, "Bring to front", onBringToFront)
-                PanelIconButton(Icons.Filled.FlipToBack, "Send to back", onSendToBack)
-                PanelIconButton(Icons.Filled.Delete, "Delete", onDelete, tint = scheme.error)
+                PanelIconButton(Icons.Filled.ContentCopy, tr(StringKey.Duplicate), onDuplicate)
+                PanelIconButton(Icons.Filled.FlipToFront, tr(StringKey.BringToFront), onBringToFront)
+                PanelIconButton(Icons.Filled.FlipToBack, tr(StringKey.SendToBack), onSendToBack)
+                PanelIconButton(Icons.Filled.Delete, tr(StringKey.Delete), onDelete, tint = scheme.error)
             }
         }
     }
 
     when (pickerTarget) {
         ColorTarget.STROKE -> ColorPickerDialog(
-            title = "Stroke color",
+            title = tr(StringKey.StrokeColor),
             initial = uiState.strokeColor,
             allowNone = false,
             onDismiss = { pickerTarget = null },
@@ -109,7 +111,7 @@ fun PropertiesBar(
             }
         )
         ColorTarget.FILL -> ColorPickerDialog(
-            title = "Fill color",
+            title = tr(StringKey.FillColor),
             initial = uiState.fillColor,
             allowNone = true,
             onDismiss = { pickerTarget = null },

@@ -60,10 +60,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.mobileflasher.app.i18n.StringKey
+import com.mobileflasher.app.i18n.tr
 import com.mobileflasher.app.model.EllipseShape
 import com.mobileflasher.app.model.FreehandShape
 import com.mobileflasher.app.model.LineShape
 import com.mobileflasher.app.model.RectangleShape
+import com.mobileflasher.app.model.ProjectMode
 import com.mobileflasher.app.model.Tool
 import com.mobileflasher.app.model.VectorShape
 import com.mobileflasher.app.model.hitTest
@@ -345,7 +348,7 @@ fun CanvasScreen(
             Canvas(modifier = Modifier.matchParentSize()) {
                 if (uiState.gridVisible) drawGrid()
 
-                if (uiState.onionSkinEnabled && currentLayer != null) {
+                if (uiState.onionSkinEnabled && uiState.project.mode == ProjectMode.ANIMATION && currentLayer != null) {
                     currentLayer.frames.getOrNull(uiState.currentFrameIndex - 1)?.shapes?.forEach { shape ->
                         drawShape(shape, alpha = 0.25f)
                     }
@@ -402,12 +405,12 @@ fun CanvasScreen(
                 .padding(18.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            CanvasBadge(uiState.selectedTool.label())
-            CanvasBadge("Frame ${uiState.currentFrameIndex + 1}")
-            if (isLocked) CanvasBadge("Locked")
+            CanvasBadge(tr(uiState.selectedTool.labelKey()))
+            if (uiState.project.mode == ProjectMode.ANIMATION) CanvasBadge(tr(StringKey.FrameBadge, uiState.currentFrameIndex + 1))
+            if (isLocked) CanvasBadge(tr(StringKey.LockedBadge))
             if (viewScale != 1f || viewOffset != Offset.Zero) {
                 CanvasBadge(
-                    text = "${(viewScale * 100f).roundToInt()}%  Fit",
+                    text = tr(StringKey.ZoomFit, (viewScale * 100f).roundToInt()),
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .clickable {
@@ -437,16 +440,6 @@ private fun CanvasBadge(text: String, modifier: Modifier = Modifier, accent: Boo
             .background(if (accent) BoltAmber else Color(0xB3121620), RoundedCornerShape(50))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     )
-}
-
-private fun Tool.label(): String = when (this) {
-    Tool.SELECT -> "Select"
-    Tool.ERASER -> "Eraser"
-    Tool.EYEDROPPER -> "Eyedropper"
-    Tool.RECTANGLE -> "Rectangle"
-    Tool.ELLIPSE -> "Ellipse"
-    Tool.LINE -> "Line"
-    Tool.PEN -> "Pencil"
 }
 
 private fun measureLabel(tool: Tool, start: Offset, end: Offset): String? = when (tool) {

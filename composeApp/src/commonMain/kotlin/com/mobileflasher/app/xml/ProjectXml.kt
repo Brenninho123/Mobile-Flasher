@@ -10,6 +10,7 @@ import com.mobileflasher.app.model.ImageShape
 import com.mobileflasher.app.model.Layer
 import com.mobileflasher.app.model.LineShape
 import com.mobileflasher.app.model.Project
+import com.mobileflasher.app.model.ProjectMode
 import com.mobileflasher.app.model.RectangleShape
 import com.mobileflasher.app.model.VectorShape
 import com.mobileflasher.app.platform.decodePngToImageBitmap
@@ -18,7 +19,7 @@ import kotlin.math.roundToInt
 fun writeProjectXml(project: Project, assets: MutableMap<String, ByteArray>? = null): String {
     val builder = StringBuilder()
     builder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-    builder.append("<project name=\"${escapeXml(project.name)}\" frameRate=\"${project.frameRate}\">\n")
+    builder.append("<project name=\"${escapeXml(project.name)}\" frameRate=\"${project.frameRate}\" mode=\"${project.mode.code}\">\n")
     for (layer in project.layers) {
         builder.append(
             "  <layer id=\"${escapeXml(layer.id)}\" name=\"${escapeXml(layer.name)}\" " +
@@ -46,7 +47,8 @@ fun parseProjectXml(xml: String, assets: Map<String, ByteArray> = emptyMap()): P
     return Project(
         name = name,
         frameRate = frameRate,
-        layers = layers.ifEmpty { listOf(Layer(id = "layer-1", name = "Layer 1")) }
+        layers = layers.ifEmpty { listOf(Layer(id = "layer-1", name = "Layer 1")) },
+        mode = ProjectMode.fromCode(root.attributes["mode"])
     )
 }
 
@@ -61,7 +63,8 @@ private fun writeShapeXml(shape: VectorShape, assets: MutableMap<String, ByteArr
         "x2=\"${shape.end.x}\" y2=\"${shape.end.y}\" stroke=\"${colorToHex(shape.strokeColor)}\" " +
         "strokeWidth=\"${shape.strokeWidth}\" />\n"
     is FreehandShape -> "      <freehand id=\"${escapeXml(shape.id)}\" stroke=\"${colorToHex(shape.strokeColor)}\" " +
-        "strokeWidth=\"${shape.strokeWidth}\" points=\"${shape.points.joinToString(" ") { "${it.x},${it.y}" }}\" />\n"
+        "strokeWidth=\"${shape.strokeWidth}\" fill=\"${shape.fillColor?.let { colorToHex(it) } ?: ""}\" " +
+        "closed=\"${shape.closed}\" points=\"${shape.points.joinToString(" ") { "${it.x},${it.y}" }}\" />\n"
     is ImageShape -> "      <image id=\"${escapeXml(shape.id)}\" x=\"${shape.topLeft.x}\" y=\"${shape.topLeft.y}\" " +
         "width=\"${shape.size.width}\" height=\"${shape.size.height}\" data=\"${base64Encode(shape.sourcePng)}\" />\n"
 }
@@ -121,7 +124,9 @@ private fun parseShapeXml(node: XmlNode, assets: Map<String, ByteArray>): Vector
                 Offset(parts[0].toFloat(), parts[1].toFloat())
             },
             strokeColor = hexToColor(node.attributes["stroke"] ?: "#FF000000"),
-            strokeWidth = node.attributes["strokeWidth"]?.toFloatOrNull() ?: 2f
+            strokeWidth = node.attributes["strokeWidth"]?.toFloatOrNull() ?: 2f,
+            fillColor = node.attributes["fill"]?.takeIf { it.isNotBlank() }?.let { hexToColor(it) },
+            closed = node.attributes["closed"]?.toBooleanStrictOrNull() ?: false
         )
         "image" -> {
             val assetKey = node.attributes["asset"]

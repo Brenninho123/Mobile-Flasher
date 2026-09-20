@@ -5,10 +5,16 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntSize
+import com.mobileflasher.app.i18n.Language
+import com.mobileflasher.app.i18n.Localizer
+import com.mobileflasher.app.i18n.Message
+import com.mobileflasher.app.i18n.StringKey
+import com.mobileflasher.app.i18n.message
 import com.mobileflasher.app.model.Frame
 import com.mobileflasher.app.model.ImageShape
 import com.mobileflasher.app.model.Layer
 import com.mobileflasher.app.model.Project
+import com.mobileflasher.app.model.ProjectMode
 import com.mobileflasher.app.model.Tool
 import com.mobileflasher.app.model.VectorShape
 import com.mobileflasher.app.media.ImportedAnimation
@@ -22,7 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-class EditorController {
+class EditorController(private val localizer: () -> Localizer = { Localizer(Language.Default) }) {
 
     private val _state = MutableStateFlow(EditorUiState())
     val state: StateFlow<EditorUiState> = _state.asStateFlow()
@@ -137,7 +143,7 @@ class EditorController {
             ?.shapes?.firstOrNull { it.id == shapeId } ?: return
         if (shape is ImageShape) return
         _state.update { it.copy(strokeColor = shape.strokeColor, fillColor = shape.fillColor, strokeWidth = shape.strokeWidth.coerceIn(1f, 32f)) }
-        setStatusMessage("Style picked")
+        setStatusMessage(message(StringKey.StylePicked))
     }
 
     fun duplicateFrame() {
@@ -155,7 +161,7 @@ class EditorController {
         }
     }
 
-    suspend fun <T> busy(message: String, block: suspend () -> T): T {
+    suspend fun <T> busy(message: Message, block: suspend () -> T): T {
         _state.update { it.copy(busyMessage = message) }
         try {
             return block()
@@ -165,7 +171,7 @@ class EditorController {
     }
 
     suspend fun importAnimation(bytes: ByteArray) {
-        val animation = busy("Importing animation") {
+        val animation = busy(message(StringKey.ImportingAnimation)) {
             withContext(Dispatchers.Default) {
                 try {
                     decodeAnimation(bytes) ?: return@withContext null
@@ -175,7 +181,7 @@ class EditorController {
             }
         }
         if (animation == null) {
-            setStatusMessage("Could not read that animation on this device")
+            setStatusMessage(message(StringKey.CouldNotReadAnimation))
             return
         }
         addAnimationLayer(animation)
@@ -217,7 +223,7 @@ class EditorController {
         recordHistory()
         _state.update { state ->
             val isBlank = state.project.layers.all { layer -> layer.frames.all { it.shapes.isEmpty() } }
-            val layer = Layer(id = "layer-${layerIdCounter++}", name = "Animation ${state.project.layers.size + 1}", frames = frames)
+            val layer = Layer(id = "layer-${layerIdCounter++}", name = localizer().text(StringKey.AnimationLayerName, state.project.layers.size + 1), frames = frames)
             state.copy(
                 project = state.project.copy(
                     layers = state.project.layers + layer,
@@ -228,7 +234,7 @@ class EditorController {
                 selectedShapeId = null
             )
         }
-        setStatusMessage("Imported ${frames.size} frames")
+        setStatusMessage(if (frames.size == 1) message(StringKey.ImportedOneFrame) else message(StringKey.ImportedFrames, frames.size))
     }
 
     fun setProjectName(name: String) {
@@ -329,11 +335,11 @@ class EditorController {
     private fun canEditCurrentLayer(): Boolean {
         val layer = _state.value.currentLayer ?: return false
         if (layer.isLocked) {
-            setStatusMessage("Layer is locked")
+            setStatusMessage(message(StringKey.LayerLocked))
             return false
         }
         if (!layer.isVisible) {
-            setStatusMessage("Layer is hidden")
+            setStatusMessage(message(StringKey.LayerHidden))
             return false
         }
         return true
@@ -402,7 +408,7 @@ class EditorController {
     fun addLayer() {
         recordHistory()
         _state.update { current ->
-            val newLayer = Layer(id = "layer-${layerIdCounter++}", name = "Layer ${current.project.layers.size + 1}")
+            val newLayer = Layer(id = "layer-${layerIdCounter++}", name = localizer().text(StringKey.DefaultLayerName, current.project.layers.size + 1))
             current.copy(
                 project = current.project.copy(layers = current.project.layers + newLayer),
                 currentLayerIndex = current.project.layers.size
@@ -422,7 +428,7 @@ class EditorController {
         _state.update { it.copy(canvasSize = size) }
     }
 
-    fun setStatusMessage(message: String?) {
+    fun setStatusMessage(message: Message?) {
         _state.update { it.copy(statusMessage = message) }
     }
 
@@ -432,7 +438,7 @@ class EditorController {
         val bitmap = try {
             decodePngToImageBitmap(pngBytes)
         } catch (e: Exception) {
-            setStatusMessage("Could not read that image")
+            setStatusMessage(message(StringKey.CouldNotReadImage))
             return
         }
         val aspectRatio = bitmap.height.toFloat() / bitmap.width.toFloat().coerceAtLeast(1f)
@@ -458,11 +464,11 @@ class EditorController {
         val shapes = try {
             importSvg(svgText, nextId = ::nextShapeId)
         } catch (e: Exception) {
-            setStatusMessage("Could not read that SVG file")
+            setStatusMessage(message(StringKey.CouldNotReadSvg))
             return
         }
         if (shapes.isEmpty()) {
-            setStatusMessage("No shapes found in that SVG file")
+            setStatusMessage(message(StringKey.NoShapesInSvg))
             return
         }
         if (!canEditCurrentLayer()) return
@@ -478,6 +484,8 @@ class EditorController {
     ) {
         undoStack.clear()
         redoStack.clear()
+        layerIdCounter = nextIdAfter(project.layers.map { it.id }, "layer-", layerIdCounter)
+        shapeIdCounter = nextIdAfter(project.layers.flatMap { layer -> layer.frames.flatMap { frame -> frame.shapes.map { it.id } } }, "shape-", shapeIdCounter)
         _state.update {
             EditorUiState(
                 project = project,
@@ -487,6 +495,17 @@ class EditorController {
                 onionSkinEnabled = onionSkinEnabled
             )
         }
+    }
+
+    fun setMode(mode: ProjectMode) {
+        if (_state.value.project.mode == mode) return
+        recordHistory()
+        _state.update { it.copy(project = it.project.copy(mode = mode)) }
+    }
+
+    private fun nextIdAfter(ids: List<String>, prefix: String, current: Int): Int {
+        val highest = ids.maxOfOrNull { id -> id.removePrefix(prefix).takeIf { id.startsWith(prefix) }?.toIntOrNull() ?: -1 } ?: -1
+        return maxOf(current, highest + 1)
     }
 
     private fun Layer.appendFrame(isKeyframe: Boolean): Layer {

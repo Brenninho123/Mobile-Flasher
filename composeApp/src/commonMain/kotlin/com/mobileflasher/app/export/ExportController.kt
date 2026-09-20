@@ -1,5 +1,6 @@
 package com.mobileflasher.app.export
 
+import com.mobileflasher.app.fla.FlaFormat
 import com.mobileflasher.app.mflash.MflashFormat
 import com.mobileflasher.app.model.Project
 import com.mobileflasher.app.platform.encodeMp4
@@ -39,8 +40,24 @@ class ExportController(
         return true
     }
 
+    suspend fun exportProjectAsFla(project: Project, width: Int, height: Int) {
+        val bytes = withContext(Dispatchers.Default) {
+            FlaFormat.encode(
+                project,
+                if (width > 0) width else DefaultStageWidth,
+                if (height > 0) height else DefaultStageHeight
+            )
+        }
+        saveBytes(bytes, sanitizeFileName(project.name) + "." + FlaFormat.Extension, FlaFormat.MimeType)
+    }
+
     fun exportProjectFile(bytes: ByteArray, projectName: String) {
         saveBytes(bytes, sanitizeFileName(projectName) + "." + MflashFormat.Extension, MflashFormat.MimeType)
+    }
+
+    private companion object {
+        const val DefaultStageWidth = 550
+        const val DefaultStageHeight = 400
     }
 
     private fun sanitizeFileName(name: String): String {

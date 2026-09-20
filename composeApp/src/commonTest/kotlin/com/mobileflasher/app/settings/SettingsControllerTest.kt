@@ -1,5 +1,6 @@
 package com.mobileflasher.app.settings
 
+import com.mobileflasher.app.i18n.Language
 import com.mobileflasher.app.platform.KeyValueStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -57,5 +58,30 @@ class SettingsControllerTest {
 
         assertEquals(ThemeMode.SYSTEM, settings.themeMode)
         assertEquals(60, settings.defaultFrameRate)
+    }
+}
+
+class LanguageSettingTest {
+
+    @Test
+    fun defaultsToAutomaticDetection() {
+        assertEquals(null, SettingsController(MemoryStore()).settings.value.language)
+    }
+
+    @Test
+    fun persistsAndClearsTheLanguageChoice() {
+        val store = MemoryStore()
+        SettingsController(store).update { it.copy(language = Language.FRENCH) }
+        assertEquals(Language.FRENCH, SettingsController(store).settings.value.language)
+
+        SettingsController(store).update { it.copy(language = null) }
+        assertEquals(null, SettingsController(store).settings.value.language)
+    }
+
+    @Test
+    fun ignoresCorruptStoredLanguage() {
+        val store = MemoryStore()
+        store.ints["language"] = 42
+        assertEquals(null, SettingsController(store).settings.value.language)
     }
 }

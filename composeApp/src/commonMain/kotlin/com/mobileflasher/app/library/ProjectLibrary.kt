@@ -13,6 +13,8 @@ data class LibraryEntry(
     val layerCount: Int
 )
 
+class ImportResult(val entry: LibraryEntry, val skippedElements: Int)
+
 class ProjectLibrary(
     private val files: FileStore,
     private val clock: () -> Long
@@ -46,11 +48,13 @@ class ProjectLibrary(
         return entry
     }
 
-    fun importBytes(bytes: ByteArray): LibraryEntry? {
-        val project = MflashFormat.readProject(bytes)
-        val thumbnail = if (MflashFormat.isContainer(bytes)) MflashFormat.decode(bytes).thumbnailPng else null
-        return save(null, project, thumbnail)
+    fun importFile(bytes: ByteArray): ImportResult? {
+        val imported = ProjectImport.read(bytes)
+        val entry = save(null, imported.project, imported.thumbnailPng) ?: return null
+        return ImportResult(entry, imported.skippedElements)
     }
+
+    fun importBytes(bytes: ByteArray): LibraryEntry? = importFile(bytes)?.entry
 
     fun loadProject(id: String): Project? {
         val bytes = files.read(projectFile(id)) ?: return null

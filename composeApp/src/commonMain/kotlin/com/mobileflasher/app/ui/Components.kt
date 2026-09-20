@@ -53,6 +53,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.mobileflasher.app.i18n.StringKey
+import com.mobileflasher.app.i18n.tr
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -248,11 +250,11 @@ fun ColorPickerDialog(
                     SwatchDot(color = if (none) null else color, size = 44.dp)
                     Column {
                         Text(
-                            text = if (none) "No fill" else color.toHex(),
+                            text = if (none) tr(StringKey.NoFill) else color.toHex(),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "Pick a preset or fine tune below",
+                            text = tr(StringKey.PickPresetHint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -287,14 +289,14 @@ fun ColorPickerDialog(
                         }
                     }
                 }
-                LabeledSlider("Hue") {
+                LabeledSlider(tr(StringKey.Hue)) {
                     GradientSlider(
                         value = hue / 360f,
                         onValueChange = { hue = it * 360f; applyHsv() },
                         colors = (0..6).map { Color.hsv(it * 60f % 360f, 1f, 1f) }
                     )
                 }
-                LabeledSlider("Saturation") {
+                LabeledSlider(tr(StringKey.Saturation)) {
                     GradientSlider(
                         value = saturation,
                         onValueChange = { saturation = it; applyHsv() },
@@ -304,7 +306,7 @@ fun ColorPickerDialog(
                         )
                     )
                 }
-                LabeledSlider("Brightness") {
+                LabeledSlider(tr(StringKey.Brightness)) {
                     GradientSlider(
                         value = brightness,
                         onValueChange = { brightness = it; applyHsv() },
@@ -318,17 +320,17 @@ fun ColorPickerDialog(
                     FilterChip(
                         selected = none,
                         onClick = { none = !none },
-                        label = { Text("No fill") },
+                        label = { Text(tr(StringKey.NoFill)) },
                         leadingIcon = { Icon(Icons.Filled.Block, contentDescription = null, modifier = Modifier.size(18.dp)) }
                     )
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(if (none) null else color) }) { Text("Apply") }
+            TextButton(onClick = { onConfirm(if (none) null else color) }) { Text(tr(StringKey.Apply)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(tr(StringKey.Cancel)) }
         }
     )
 }
@@ -365,14 +367,14 @@ fun ProjectDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it.take(48) },
-                    label = { Text("Project name") },
+                    label = { Text(tr(StringKey.ProjectName)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (initialFrameRate != null) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            text = "Frame rate",
+                            text = tr(StringKey.FrameRate),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -396,7 +398,7 @@ fun ProjectDialog(
             ) { Text(confirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(tr(StringKey.Cancel)) }
         }
     )
 }

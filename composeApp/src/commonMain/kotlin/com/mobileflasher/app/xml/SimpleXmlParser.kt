@@ -22,8 +22,16 @@ fun escapeXml(text: String): String {
         .replace("'", "&apos;")
 }
 
+private val NumericReference = Regex("&#(x[0-9a-fA-F]+|[0-9]+);")
+
 private fun unescapeXml(text: String): String {
-    return text
+    if (text.indexOf('&') < 0) return text
+    val withCharacters = NumericReference.replace(text) { match ->
+        val body = match.groupValues[1]
+        val code = if (body[0] == 'x') body.substring(1).toIntOrNull(16) else body.toIntOrNull()
+        if (code != null && code in 1..0xFFFF) code.toChar().toString() else match.value
+    }
+    return withCharacters
         .replace("&lt;", "<")
         .replace("&gt;", ">")
         .replace("&quot;", "\"")
@@ -93,6 +101,14 @@ private class XmlParserState(private val source: String) {
             } else if (source.startsWith("<!--", pos)) {
                 val end = source.indexOf("-->", pos)
                 pos = if (end >= 0) end + 3 else source.length
+            } else if (source.startsWith("<![CDATA[", pos)) {
+                val end = source.indexOf("]]>", pos)
+                val stop = if (end >= 0) end else source.length
+                textBuilder.append(source, pos + 9, stop)
+                pos = if (end >= 0) end + 3 else source.length
+            } else if (source.startsWith("<?", pos)) {
+                val end = source.indexOf("?>", pos)
+                pos = if (end >= 0) end + 2 else source.length
             } else if (source[pos] == '<') {
                 children.add(parseElement())
             } else {

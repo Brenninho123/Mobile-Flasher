@@ -29,12 +29,25 @@ fun DrawScope.drawShape(shape: VectorShape, alpha: Float = 1f) {
         }
         is LineShape -> drawLine(color = shape.strokeColor, start = shape.start, end = shape.end, strokeWidth = shape.strokeWidth, alpha = alpha)
         is FreehandShape -> if (shape.points.size > 1) {
-            drawPath(
-                pointsToPath(shape.points),
-                shape.strokeColor,
-                alpha = alpha,
-                style = Stroke(width = shape.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
+            if (shape.closed) {
+                val polygon = polygonPath(shape.points)
+                shape.fillColor?.let { drawPath(polygon, it, alpha = alpha, style = Fill) }
+                if (shape.strokeColor.alpha > 0f && shape.strokeWidth > 0f) {
+                    drawPath(
+                        polygon,
+                        shape.strokeColor,
+                        alpha = alpha,
+                        style = Stroke(width = shape.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    )
+                }
+            } else {
+                drawPath(
+                    pointsToPath(shape.points),
+                    shape.strokeColor,
+                    alpha = alpha,
+                    style = Stroke(width = shape.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                )
+            }
         }
         is ImageShape -> drawImage(
             image = shape.image,
@@ -43,6 +56,14 @@ fun DrawScope.drawShape(shape: VectorShape, alpha: Float = 1f) {
             alpha = alpha
         )
     }
+}
+
+fun polygonPath(points: List<Offset>): Path {
+    val path = Path()
+    path.moveTo(points.first().x, points.first().y)
+    points.drop(1).forEach { path.lineTo(it.x, it.y) }
+    path.close()
+    return path
 }
 
 fun pointsToPath(points: List<Offset>): Path {

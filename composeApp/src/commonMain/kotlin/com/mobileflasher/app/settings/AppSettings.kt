@@ -1,5 +1,6 @@
 package com.mobileflasher.app.settings
 
+import com.mobileflasher.app.i18n.Language
 import com.mobileflasher.app.platform.KeyValueStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,6 +11,7 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val language: Language? = null,
     val reduceMotion: Boolean = false,
     val defaultFrameRate: Int = 24,
     val gridByDefault: Boolean = false,
@@ -39,6 +41,7 @@ class SettingsController(private val store: KeyValueStore) {
         val defaults = AppSettings()
         return AppSettings(
             themeMode = ThemeMode.entries.getOrElse(store.getInt(KeyTheme, defaults.themeMode.ordinal)) { defaults.themeMode },
+            language = Language.entries.getOrNull(store.getInt(KeyLanguage, NoLanguage)),
             reduceMotion = store.getBoolean(KeyReduceMotion, defaults.reduceMotion),
             defaultFrameRate = store.getInt(KeyFrameRate, defaults.defaultFrameRate).coerceIn(1, 60),
             gridByDefault = store.getBoolean(KeyGrid, defaults.gridByDefault),
@@ -50,6 +53,7 @@ class SettingsController(private val store: KeyValueStore) {
 
     private fun save(settings: AppSettings) {
         store.putInt(KeyTheme, settings.themeMode.ordinal)
+        store.putInt(KeyLanguage, settings.language?.ordinal ?: NoLanguage)
         store.putBoolean(KeyReduceMotion, settings.reduceMotion)
         store.putInt(KeyFrameRate, settings.defaultFrameRate)
         store.putBoolean(KeyGrid, settings.gridByDefault)
@@ -60,6 +64,8 @@ class SettingsController(private val store: KeyValueStore) {
 
     private companion object {
         const val KeyTheme = "theme_mode"
+        const val KeyLanguage = "language"
+        const val NoLanguage = -1
         const val KeyReduceMotion = "reduce_motion"
         const val KeyFrameRate = "default_frame_rate"
         const val KeyGrid = "grid_by_default"

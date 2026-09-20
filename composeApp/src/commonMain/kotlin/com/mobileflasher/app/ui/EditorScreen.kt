@@ -28,6 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.mobileflasher.app.export.ExportController
+import com.mobileflasher.app.i18n.StringKey
+import com.mobileflasher.app.i18n.message
+import com.mobileflasher.app.i18n.tr
+import com.mobileflasher.app.model.ProjectMode
 import com.mobileflasher.app.state.EditorController
 import com.mobileflasher.app.state.EditorUiState
 import kotlinx.coroutines.launch
@@ -71,7 +75,7 @@ fun EditorScreen(
                     },
                     onExportGif = {
                         scope.launch {
-                            controller.busy("Rendering GIF") {
+                            controller.busy(message(StringKey.RenderingGif)) {
                                 exportController.exportAnimationAsGif(
                                     project = uiState.project,
                                     width = uiState.canvasSize.width,
@@ -82,16 +86,26 @@ fun EditorScreen(
                     },
                     onExportMp4 = {
                         scope.launch {
-                            val exported = controller.busy("Encoding video") {
+                            val exported = controller.busy(message(StringKey.EncodingVideo)) {
                                 exportController.exportAnimationAsMp4(
                                     project = uiState.project,
                                     width = uiState.canvasSize.width,
                                     height = uiState.canvasSize.height
                                 )
                             }
-                            if (!exported) controller.setStatusMessage("Video export is not available on this device")
+                            if (!exported) controller.setStatusMessage(message(StringKey.VideoExportUnavailable))
                         }
                     },
+                    onExportFla = {
+                        scope.launch {
+                            exportController.exportProjectAsFla(
+                                project = uiState.project,
+                                width = uiState.canvasSize.width,
+                                height = uiState.canvasSize.height
+                            )
+                        }
+                    },
+                    onConvertToAnimation = { controller.setMode(ProjectMode.ANIMATION) },
                     onSaveProject = onSaveProject,
                     onShareProject = onShareProject,
                     onOpenProject = pickProject
@@ -143,21 +157,33 @@ fun EditorScreen(
                     onSendToBack = controller::sendSelectedToBack,
                     onDelete = controller::deleteSelectedShape
                 )
-                TimelinePanel(
-                    uiState = uiState,
-                    modifier = Modifier.height(232.dp),
-                    onCellSelected = controller::selectCell,
-                    onAddFrame = controller::addFrame,
-                    onAddKeyframe = controller::addKeyframe,
-                    onDuplicateFrame = controller::duplicateFrame,
-                    onDeleteFrame = controller::deleteCurrentFrame,
-                    onTogglePlay = controller::togglePlay,
-                    onAddLayer = controller::addLayer,
-                    onDeleteLayer = controller::deleteLayer,
-                    onToggleLayerVisibility = controller::toggleLayerVisibility,
-                    onToggleLayerLock = controller::toggleLayerLock,
-                    onFrameRateChanged = controller::setFrameRate
-                )
+                if (uiState.project.mode == ProjectMode.ART) {
+                    LayerStrip(
+                        uiState = uiState,
+                        modifier = Modifier.height(176.dp),
+                        onSelectLayer = controller::selectLayer,
+                        onAddLayer = controller::addLayer,
+                        onDeleteLayer = controller::deleteLayer,
+                        onToggleLayerVisibility = controller::toggleLayerVisibility,
+                        onToggleLayerLock = controller::toggleLayerLock
+                    )
+                } else {
+                    TimelinePanel(
+                        uiState = uiState,
+                        modifier = Modifier.height(232.dp),
+                        onCellSelected = controller::selectCell,
+                        onAddFrame = controller::addFrame,
+                        onAddKeyframe = controller::addKeyframe,
+                        onDuplicateFrame = controller::duplicateFrame,
+                        onDeleteFrame = controller::deleteCurrentFrame,
+                        onTogglePlay = controller::togglePlay,
+                        onAddLayer = controller::addLayer,
+                        onDeleteLayer = controller::deleteLayer,
+                        onToggleLayerVisibility = controller::toggleLayerVisibility,
+                        onToggleLayerLock = controller::toggleLayerLock,
+                        onFrameRateChanged = controller::setFrameRate
+                    )
+                }
             }
         }
         AnimatedVisibility(
@@ -165,7 +191,7 @@ fun EditorScreen(
             enter = fadeIn(),
             exit = fadeOut()
         ) {
-            BusyOverlay(uiState.busyMessage ?: "")
+            BusyOverlay(uiState.busyMessage?.let { tr(it) } ?: "")
         }
     }
 }

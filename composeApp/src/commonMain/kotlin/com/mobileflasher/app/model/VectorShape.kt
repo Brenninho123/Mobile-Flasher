@@ -96,9 +96,10 @@ data class FreehandShape(
     override val id: String,
     val points: List<Offset>,
     override val strokeColor: Color,
-    override val strokeWidth: Float
+    override val strokeWidth: Float,
+    override val fillColor: Color? = null,
+    val closed: Boolean = false
 ) : VectorShape() {
-    override val fillColor: Color? = null
 
     override fun bounds(): Rect {
         if (points.isEmpty()) return Rect.Zero
@@ -123,7 +124,7 @@ data class FreehandShape(
     }
 
     override fun restyled(strokeColor: Color, strokeWidth: Float, fillColor: Color?): VectorShape =
-        copy(strokeColor = strokeColor, strokeWidth = strokeWidth)
+        copy(strokeColor = strokeColor, strokeWidth = strokeWidth, fillColor = if (closed) fillColor else null)
 
     override fun withId(id: String): VectorShape = copy(id = id)
 }
@@ -168,12 +169,26 @@ private fun distanceToSegment(point: Offset, a: Offset, b: Offset): Float {
     return (point - Offset(a.x + t * dx, a.y + t * dy)).getDistance()
 }
 
+private fun insidePolygon(point: Offset, polygon: List<Offset>): Boolean {
+    var inside = false
+    var previous = polygon.last()
+    for (current in polygon) {
+        val crosses = (current.y > point.y) != (previous.y > point.y) &&
+            point.x < (previous.x - current.x) * (point.y - current.y) / (previous.y - current.y) + current.x
+        if (crosses) inside = !inside
+        previous = current
+    }
+    return inside
+}
+
 fun VectorShape.hitTest(point: Offset, tolerance: Float): Boolean = when (this) {
     is LineShape -> distanceToSegment(point, start, end) <= tolerance + strokeWidth / 2f
     is FreehandShape -> when (points.size) {
         0 -> false
         1 -> (points[0] - point).getDistance() <= tolerance + strokeWidth / 2f
-        else -> points.zipWithNext().any { (a, b) -> distanceToSegment(point, a, b) <= tolerance + strokeWidth / 2f }
+        else -> (closed && fillColor != null && insidePolygon(point, points)) ||
+            (if (closed) points + points.first() else points).zipWithNext()
+                .any { (a, b) -> distanceToSegment(point, a, b) <= tolerance + strokeWidth / 2f }
     }
     else -> bounds().inflate(tolerance).contains(point)
 }

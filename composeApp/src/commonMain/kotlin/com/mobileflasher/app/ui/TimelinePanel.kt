@@ -52,6 +52,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mobileflasher.app.model.Layer
+import com.mobileflasher.app.i18n.StringKey
+import com.mobileflasher.app.i18n.tr
 import com.mobileflasher.app.state.EditorUiState
 import com.mobileflasher.app.state.frameCount
 
@@ -187,7 +189,7 @@ private fun TimelineToolbar(
         ) {
             Icon(
                 imageVector = if (uiState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                contentDescription = if (uiState.isPlaying) "Pause" else "Play",
+                contentDescription = if (uiState.isPlaying) tr(StringKey.Pause) else tr(StringKey.Play),
                 tint = if (uiState.isPlaying) scheme.onSecondary else scheme.onPrimary
             )
         }
@@ -197,26 +199,26 @@ private fun TimelineToolbar(
                 style = MaterialTheme.typography.titleSmall
             )
             Text(
-                text = "frame",
+                text = tr(StringKey.FrameUnit),
                 style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant
             )
         }
         SectionDivider()
-        PanelIconButton(Icons.Filled.Add, "Add frame", onAddFrame)
-        PanelIconButton(Icons.Filled.Star, "Add keyframe", onAddKeyframe, tint = scheme.secondary)
-        PanelIconButton(Icons.Filled.CopyAll, "Duplicate frame", onDuplicateFrame)
+        PanelIconButton(Icons.Filled.Add, tr(StringKey.AddFrame), onAddFrame)
+        PanelIconButton(Icons.Filled.Star, tr(StringKey.AddKeyframe), onAddKeyframe, tint = scheme.secondary)
+        PanelIconButton(Icons.Filled.CopyAll, tr(StringKey.DuplicateFrame), onDuplicateFrame)
         PanelIconButton(
             Icons.Filled.DeleteSweep,
-            "Delete frame",
+            tr(StringKey.DeleteFrame),
             onDeleteFrame,
             enabled = (uiState.project.layers.getOrNull(uiState.currentLayerIndex)?.frames?.size ?: 0) > 1
         )
         SectionDivider()
-        PanelIconButton(Icons.Filled.Layers, "Add layer", onAddLayer)
+        PanelIconButton(Icons.Filled.Layers, tr(StringKey.AddLayer), onAddLayer)
         PanelIconButton(
             Icons.Filled.LayersClear,
-            "Delete layer",
+            tr(StringKey.DeleteLayer),
             onDeleteLayer,
             enabled = uiState.project.layers.size > 1
         )
@@ -280,7 +282,7 @@ private fun Ruler(frameCount: Int, currentFrameIndex: Int, onFrameClick: (Int) -
 }
 
 @Composable
-private fun LayerHeader(
+internal fun LayerHeader(
     layer: Layer,
     isSelected: Boolean,
     onSelect: () -> Unit,
@@ -306,7 +308,7 @@ private fun LayerHeader(
         )
         Icon(
             imageVector = if (layer.isVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-            contentDescription = if (layer.isVisible) "Hide layer" else "Show layer",
+            contentDescription = if (layer.isVisible) tr(StringKey.HideLayer) else tr(StringKey.ShowLayer),
             tint = if (layer.isVisible) scheme.onSurfaceVariant else scheme.outline,
             modifier = Modifier
                 .size(30.dp)
@@ -316,7 +318,7 @@ private fun LayerHeader(
         )
         Icon(
             imageVector = if (layer.isLocked) Icons.Filled.Lock else Icons.Filled.LockOpen,
-            contentDescription = if (layer.isLocked) "Unlock layer" else "Lock layer",
+            contentDescription = if (layer.isLocked) tr(StringKey.UnlockLayer) else tr(StringKey.LockLayer),
             tint = if (layer.isLocked) scheme.secondary else scheme.outline,
             modifier = Modifier
                 .size(30.dp)

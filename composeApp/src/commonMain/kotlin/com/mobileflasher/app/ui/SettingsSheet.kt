@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,6 +25,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.mobileflasher.app.i18n.Language
+import com.mobileflasher.app.i18n.StringKey
+import com.mobileflasher.app.i18n.tr
 import com.mobileflasher.app.settings.AppSettings
 import com.mobileflasher.app.settings.ThemeMode
 
@@ -51,12 +55,12 @@ fun SettingsSheet(
                 .navigationBarsPadding()
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Settings", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                TextButton(onClick = onReset) { Text("Reset") }
+                Text(tr(StringKey.Settings), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                TextButton(onClick = onReset) { Text(tr(StringKey.Reset)) }
             }
             Spacer(Modifier.height(8.dp))
 
-            SectionTitle("Appearance")
+            SectionTitle(tr(StringKey.Appearance))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ThemeMode.entries.forEach { mode ->
                     FilterChip(
@@ -65,9 +69,9 @@ fun SettingsSheet(
                         label = {
                             Text(
                                 when (mode) {
-                                    ThemeMode.SYSTEM -> "System"
-                                    ThemeMode.LIGHT -> "Light"
-                                    ThemeMode.DARK -> "Dark"
+                                    ThemeMode.SYSTEM -> tr(StringKey.ThemeSystem)
+                                    ThemeMode.LIGHT -> tr(StringKey.ThemeLight)
+                                    ThemeMode.DARK -> tr(StringKey.ThemeDark)
                                 }
                             )
                         }
@@ -75,24 +79,44 @@ fun SettingsSheet(
                 }
             }
             SwitchRow(
-                title = "Reduce motion",
-                subtitle = "Turns off the animated home screen",
+                title = tr(StringKey.ReduceMotion),
+                subtitle = tr(StringKey.ReduceMotionHint),
                 checked = settings.reduceMotion,
                 onCheckedChange = { value -> onChange { it.copy(reduceMotion = value) } }
             )
 
             SheetDivider()
-            SectionTitle("Library")
+            SectionTitle(tr(StringKey.LanguageSection))
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = settings.language == null,
+                    onClick = { onChange { it.copy(language = null) } },
+                    label = { Text(tr(StringKey.LanguageAutomatic)) }
+                )
+                Language.entries.forEach { language ->
+                    FilterChip(
+                        selected = settings.language == language,
+                        onClick = { onChange { it.copy(language = language) } },
+                        label = { Text(language.nativeName) }
+                    )
+                }
+            }
+
+            SheetDivider()
+            SectionTitle(tr(StringKey.LibrarySection))
             SwitchRow(
-                title = "Autosave",
-                subtitle = "Keep projects saved on this device as you draw",
+                title = tr(StringKey.Autosave),
+                subtitle = tr(StringKey.AutosaveHint),
                 checked = settings.autosave,
                 onCheckedChange = { value -> onChange { it.copy(autosave = value) } }
             )
 
-            SectionTitle("New projects")
+            SectionTitle(tr(StringKey.NewProjectsSection))
             Text(
-                text = "Frame rate",
+                text = tr(StringKey.FrameRate),
                 style = MaterialTheme.typography.labelMedium,
                 color = scheme.onSurfaceVariant
             )
@@ -107,29 +131,29 @@ fun SettingsSheet(
                 }
             }
             SwitchRow(
-                title = "Show grid",
-                subtitle = "Start every project with the grid visible",
+                title = tr(StringKey.ShowGrid),
+                subtitle = tr(StringKey.ShowGridHint),
                 checked = settings.gridByDefault,
                 onCheckedChange = { value -> onChange { it.copy(gridByDefault = value) } }
             )
             SwitchRow(
-                title = "Snap to grid",
-                subtitle = "Align shapes to the grid while drawing",
+                title = tr(StringKey.SnapToGrid),
+                subtitle = tr(StringKey.SnapToGridHint),
                 checked = settings.snapByDefault,
                 onCheckedChange = { value -> onChange { it.copy(snapByDefault = value) } }
             )
             SwitchRow(
-                title = "Onion skin",
-                subtitle = "Show neighbouring frames faintly",
+                title = tr(StringKey.OnionSkin),
+                subtitle = tr(StringKey.OnionSkinHint),
                 checked = settings.onionSkinByDefault,
                 onCheckedChange = { value -> onChange { it.copy(onionSkinByDefault = value) } }
             )
 
             SheetDivider()
-            SectionTitle("About")
+            SectionTitle(tr(StringKey.About))
             Text("Mobile Flasher 1.0", style = MaterialTheme.typography.titleSmall)
             Text(
-                text = "Vector drawing and frame animation for your phone",
+                text = tr(StringKey.AboutTagline),
                 style = MaterialTheme.typography.bodySmall,
                 color = scheme.onSurfaceVariant
             )

@@ -32,22 +32,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.mobileflasher.app.i18n.StringKey
+import com.mobileflasher.app.i18n.tr
+import com.mobileflasher.app.model.ProjectMode
 import com.mobileflasher.app.model.Tool
 import com.mobileflasher.app.state.EditorUiState
 
-private data class ToolEntry(val tool: Tool, val icon: ImageVector, val label: String)
+private data class ToolEntry(val tool: Tool, val icon: ImageVector)
 
 private val EditTools = listOf(
-    ToolEntry(Tool.SELECT, Icons.Filled.NearMe, "Select"),
-    ToolEntry(Tool.ERASER, Icons.Filled.CleaningServices, "Eraser"),
-    ToolEntry(Tool.EYEDROPPER, Icons.Filled.Colorize, "Eyedropper")
+    ToolEntry(Tool.SELECT, Icons.Filled.NearMe),
+    ToolEntry(Tool.ERASER, Icons.Filled.CleaningServices),
+    ToolEntry(Tool.EYEDROPPER, Icons.Filled.Colorize)
 )
 
 private val DrawTools = listOf(
-    ToolEntry(Tool.PEN, Icons.Filled.Edit, "Pencil"),
-    ToolEntry(Tool.LINE, Icons.Filled.Remove, "Line"),
-    ToolEntry(Tool.RECTANGLE, Icons.Filled.CropSquare, "Rectangle"),
-    ToolEntry(Tool.ELLIPSE, Icons.Filled.Circle, "Ellipse")
+    ToolEntry(Tool.PEN, Icons.Filled.Edit),
+    ToolEntry(Tool.LINE, Icons.Filled.Remove),
+    ToolEntry(Tool.RECTANGLE, Icons.Filled.CropSquare),
+    ToolEntry(Tool.ELLIPSE, Icons.Filled.Circle)
 )
 
 @Composable
@@ -81,22 +84,24 @@ fun ToolRail(
             RailDivider()
             PanelIconButton(
                 icon = Icons.Filled.Grid4x4,
-                description = "Toggle grid",
+                description = tr(StringKey.ToggleGrid),
                 selected = uiState.gridVisible,
                 onClick = onToggleGrid
             )
             PanelIconButton(
                 icon = Icons.Filled.GridOn,
-                description = "Snap to grid",
+                description = tr(StringKey.SnapToGrid),
                 selected = uiState.snapToGrid,
                 onClick = onToggleSnap
             )
-            PanelIconButton(
-                icon = Icons.Filled.Opacity,
-                description = "Toggle onion skin",
-                selected = uiState.onionSkinEnabled,
-                onClick = onToggleOnionSkin
-            )
+            if (uiState.project.mode == ProjectMode.ANIMATION) {
+                PanelIconButton(
+                    icon = Icons.Filled.Opacity,
+                    description = tr(StringKey.ToggleOnionSkin),
+                    selected = uiState.onionSkinEnabled,
+                    onClick = onToggleOnionSkin
+                )
+            }
         }
         VerticalDivider(color = scheme.outlineVariant)
     }
@@ -115,7 +120,7 @@ private fun ToolButton(entry: ToolEntry, selected: Boolean, onToolSelected: (Too
         }
         PanelIconButton(
             icon = entry.icon,
-            description = entry.label,
+            description = tr(entry.tool.labelKey()),
             selected = selected,
             onClick = { onToolSelected(entry.tool) },
             modifier = Modifier.padding(start = 9.dp)

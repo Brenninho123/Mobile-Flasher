@@ -43,6 +43,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mobileflasher.app.i18n.StringKey
+import com.mobileflasher.app.i18n.tr
+import com.mobileflasher.app.model.ProjectMode
 import com.mobileflasher.app.state.EditorUiState
 
 @Composable
@@ -58,6 +61,8 @@ fun TopBar(
     onExportPng: () -> Unit,
     onExportGif: () -> Unit,
     onExportMp4: () -> Unit,
+    onExportFla: () -> Unit,
+    onConvertToAnimation: () -> Unit,
     onSaveProject: () -> Unit,
     onShareProject: () -> Unit,
     onOpenProject: () -> Unit
@@ -81,7 +86,7 @@ fun TopBar(
         ) {
             PanelIconButton(
                 icon = Icons.AutoMirrored.Filled.ArrowBack,
-                description = "Home",
+                description = tr(StringKey.Home),
                 onClick = onHome
             )
             Row(
@@ -111,13 +116,13 @@ fun TopBar(
                         )
                         Icon(
                             Icons.Filled.Edit,
-                            contentDescription = "Rename project",
+                            contentDescription = tr(StringKey.RenameProject),
                             tint = scheme.onSurfaceVariant,
                             modifier = Modifier.size(14.dp)
                         )
                     }
                     Text(
-                        text = "${uiState.project.frameRate} fps  |  ${uiState.project.layers.size} layers",
+                        text = projectSummary(uiState),
                         style = MaterialTheme.typography.labelSmall,
                         color = scheme.onSurfaceVariant
                     )
@@ -125,20 +130,20 @@ fun TopBar(
             }
             PanelIconButton(
                 icon = Icons.AutoMirrored.Filled.Undo,
-                description = "Undo",
+                description = tr(StringKey.Undo),
                 onClick = onUndo,
                 enabled = uiState.canUndo
             )
             PanelIconButton(
                 icon = Icons.AutoMirrored.Filled.Redo,
-                description = "Redo",
+                description = tr(StringKey.Redo),
                 onClick = onRedo,
                 enabled = uiState.canRedo
             )
             Box {
                 PanelIconButton(
                     icon = Icons.Filled.MoreVert,
-                    description = "Menu",
+                    description = tr(StringKey.Menu),
                     onClick = { menuExpanded = true }
                 )
                 DropdownMenu(
@@ -146,20 +151,29 @@ fun TopBar(
                     onDismissRequest = { menuExpanded = false },
                     containerColor = scheme.surfaceContainerHigh
                 ) {
-                    MenuHeader("Import")
-                    MenuEntry("Image", Icons.Filled.Image) { menuExpanded = false; onImportImage() }
-                    MenuEntry("SVG file", Icons.Filled.FolderOpen) { menuExpanded = false; onImportSvg() }
-                    MenuEntry("GIF or video as frames", Icons.Filled.VideoLibrary) { menuExpanded = false; onImportAnimation() }
+                    val animated = uiState.project.mode == ProjectMode.ANIMATION
+                    MenuHeader(tr(StringKey.MenuImport))
+                    MenuEntry(tr(StringKey.ImportImage), Icons.Filled.Image) { menuExpanded = false; onImportImage() }
+                    MenuEntry(tr(StringKey.ImportSvg), Icons.Filled.FolderOpen) { menuExpanded = false; onImportSvg() }
+                    if (animated) {
+                        MenuEntry(tr(StringKey.ImportAnimation), Icons.Filled.VideoLibrary) { menuExpanded = false; onImportAnimation() }
+                    }
                     HorizontalDivider(color = scheme.outlineVariant)
-                    MenuHeader("Project")
-                    MenuEntry("Open .mflash file", Icons.Filled.FolderOpen) { menuExpanded = false; onOpenProject() }
-                    MenuEntry("Save to library", Icons.Filled.Save) { menuExpanded = false; onSaveProject() }
-                    MenuEntry("Share .mflash file", Icons.Filled.Share) { menuExpanded = false; onShareProject() }
+                    MenuHeader(tr(StringKey.MenuProject))
+                    MenuEntry(tr(StringKey.OpenProjectFile), Icons.Filled.FolderOpen) { menuExpanded = false; onOpenProject() }
+                    MenuEntry(tr(StringKey.SaveToLibrary), Icons.Filled.Save) { menuExpanded = false; onSaveProject() }
+                    MenuEntry(tr(StringKey.ShareMflashFile), Icons.Filled.Share) { menuExpanded = false; onShareProject() }
+                    if (!animated) {
+                        MenuEntry(tr(StringKey.ConvertToAnimation), Icons.Filled.Movie) { menuExpanded = false; onConvertToAnimation() }
+                    }
                     HorizontalDivider(color = scheme.outlineVariant)
-                    MenuHeader("Export")
-                    MenuEntry("Current frame as PNG", Icons.Filled.FileDownload) { menuExpanded = false; onExportPng() }
-                    MenuEntry("Animation as GIF", Icons.Filled.Movie) { menuExpanded = false; onExportGif() }
-                    MenuEntry("Animation as MP4 video", Icons.Filled.Videocam) { menuExpanded = false; onExportMp4() }
+                    MenuHeader(tr(StringKey.MenuExport))
+                    MenuEntry(tr(StringKey.ExportPng), Icons.Filled.FileDownload) { menuExpanded = false; onExportPng() }
+                    if (animated) {
+                        MenuEntry(tr(StringKey.ExportGif), Icons.Filled.Movie) { menuExpanded = false; onExportGif() }
+                        MenuEntry(tr(StringKey.ExportMp4), Icons.Filled.Videocam) { menuExpanded = false; onExportMp4() }
+                    }
+                    MenuEntry(tr(StringKey.ExportFla), Icons.Filled.Save) { menuExpanded = false; onExportFla() }
                 }
             }
         }
@@ -168,10 +182,10 @@ fun TopBar(
 
     if (renaming) {
         ProjectDialog(
-            title = "Rename project",
+            title = tr(StringKey.RenameProject),
             initialName = uiState.project.name,
             initialFrameRate = null,
-            confirmLabel = "Save",
+            confirmLabel = tr(StringKey.Save),
             onDismiss = { renaming = false },
             onConfirm = { name, _ ->
                 renaming = false
@@ -202,4 +216,14 @@ private fun MenuEntry(
         leadingIcon = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
         onClick = onClick
     )
+}
+
+@Composable
+private fun projectSummary(uiState: EditorUiState): String {
+    val layers = uiState.project.layers.size
+    if (uiState.project.mode == ProjectMode.ART) {
+        return if (layers == 1) tr(StringKey.LayerCountOne) else tr(StringKey.LayerCount, layers)
+    }
+    val rate = uiState.project.frameRate
+    return if (layers == 1) tr(StringKey.ProjectSummaryOneLayer, rate) else tr(StringKey.ProjectSummary, rate, layers)
 }
